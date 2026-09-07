@@ -400,30 +400,31 @@
 <script>
 (function(){
   var ADMIN_PIN = '0000';
-  function isAdminUnlocked(){
-    try { return sessionStorage.getItem('rv_admin_unlocked') === 'yes'; } catch(e){ return false; }
-  }
-  function setAdminUnlocked(v){
-    try { sessionStorage.setItem('rv_admin_unlocked', v ? 'yes' : 'no'); } catch(e){}
+  var adminUnlocked = false;
+  try { adminUnlocked = sessionStorage.getItem('rv_admin_unlocked') === 'yes'; } catch(e){ adminUnlocked = false; }
+
+  function persistUnlocked(v){
+    try { sessionStorage.setItem('rv_admin_unlocked', v ? 'yes' : 'no'); } catch(e){ /* storage blocked, ignore */ }
   }
   function applyAdminVisibility(){
-    var show = isAdminUnlocked();
     document.querySelectorAll('.rv-admin-only').forEach(function(el){
-      el.style.display = show ? '' : 'none';
+      el.style.display = adminUnlocked ? '' : 'none';
     });
     var btn = document.getElementById('rv-admin-toggle');
-    if (btn) btn.textContent = show ? 'إخفاء لوحة التحكم' : 'دخول لوحة التحكم';
+    if (btn) btn.textContent = adminUnlocked ? 'إخفاء لوحة التحكم' : 'دخول لوحة التحكم';
   }
   document.getElementById('rv-admin-toggle').addEventListener('click', function(){
-    if (isAdminUnlocked()){
-      setAdminUnlocked(false);
+    if (adminUnlocked){
+      adminUnlocked = false;
+      persistUnlocked(false);
       applyAdminVisibility();
       return;
     }
     var pin = prompt('أدخل كلمة مرور الإدارة');
     if (pin === null) return;
     if (pin === ADMIN_PIN){
-      setAdminUnlocked(true);
+      adminUnlocked = true;
+      persistUnlocked(true);
       applyAdminVisibility();
     } else {
       alert('كلمة المرور غير صحيحة.');
