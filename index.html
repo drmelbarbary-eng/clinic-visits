@@ -266,6 +266,12 @@
   .rv-loading{ text-align:center; padding: 40px 0; color: var(--ink-soft); font-size:13px; }
   .rv-admin-only{ display:none; }
 
+  @media print {
+    body *{ visibility: hidden; }
+    #rv-print-sheet, #rv-print-sheet *{ visibility: visible; }
+    #rv-print-sheet{ position: absolute; top:0; left:0; width:100%; padding:40px; }
+  }
+
   .rv-blist{ border: 1px solid var(--line); border-radius: var(--radius); overflow:hidden; background:#fff; }
   .rv-brow{
     display:grid;
@@ -336,8 +342,8 @@
     <div class="rv-admin-only" id="rv-admin-block-1">
       <div class="rv-policy">
         <div class="rv-policy-item"><span class="num">٤</span><span class="lbl">أيام في كل أسبوع تفعيل: السبت، الأحد، الثلاثاء، الأربعاء</span></div>
-        <div class="rv-policy-item"><span class="num">٥–٧</span><span class="lbl">مساءً، مدة الزيارة ساعة</span></div>
-        <div class="rv-policy-item"><span class="num">٢</span><span class="lbl">زيارتان كحد أقصى في اليوم الواحد</span></div>
+        <div class="rv-policy-item"><span class="num" id="rv-policy-time-num">٥–٧</span><span class="lbl">مساءً</span></div>
+        <div class="rv-policy-item"><span class="num" id="rv-policy-count-num">٢</span><span class="lbl" id="rv-policy-count-lbl">زيارتان كحد أقصى في اليوم الواحد</span></div>
       </div>
       <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد الأسبوع القادم…</h2>
     </div>
@@ -365,6 +371,16 @@
       <div class="rv-msg" id="rv-msg"></div>
     </div>
 
+    <div style="margin-top:30px; border-top:1px dashed var(--line); padding-top:20px;">
+      <h3 class="rv-section-title" style="font-size:17px;">عندك حجز وعايز تلغيه؟</h3>
+      <p class="rv-section-note">أدخل رقم الهاتف اللي حجزت بيه لعرض حجزك وإلغاءه.</p>
+      <div class="rv-link-row">
+        <input type="text" id="rv-self-phone" placeholder="رقم الهاتف" />
+        <button class="rv-copy" id="rv-self-search">بحث</button>
+      </div>
+      <div id="rv-self-results" style="margin-top:12px;"></div>
+    </div>
+
     <div class="rv-admin-only" id="rv-admin-block-2">
       <div class="rv-share">
         <div class="rv-qr-box" id="rv-qr"></div>
@@ -384,6 +400,29 @@
         </div>
       </div>
 
+      <div style="margin-top:24px; border:1px solid var(--brass); border-radius: var(--radius); padding:16px; background:#FEFCF8;">
+        <h3 class="rv-section-title" style="font-size:17px;">إعدادات الحجز</h3>
+        <p class="rv-section-note" style="margin-bottom:10px;">تحكم في عدد المندوبين يومياً ومواعيد الاستقبال من هنا مباشرة، من غير الحاجة لتعديل الصفحة.</p>
+        <div class="rv-field">
+          <label>عدد المندوبين المسموح به يومياً</label>
+          <input type="number" id="rv-setting-count" min="1" max="10" />
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div class="rv-field" style="flex:1;">
+            <label>من الساعة</label>
+            <input type="time" id="rv-setting-start" />
+          </div>
+          <div class="rv-field" style="flex:1;">
+            <label>إلى الساعة</label>
+            <input type="time" id="rv-setting-end" />
+          </div>
+        </div>
+        <button class="rv-submit" id="rv-setting-save">حفظ الإعدادات</button>
+        <div class="rv-msg" id="rv-setting-msg"></div>
+
+        <button type="button" id="rv-print-btn" style="margin-top:16px; width:100%; border:1px solid var(--maroon); color:var(--maroon); background:#fff; border-radius:8px; padding:10px; font-family:'Cairo'; font-weight:700; cursor:pointer;">🖨️ طباعة نسخة للباب</button>
+      </div>
+
       <div style="margin-top:30px;">
         <h3 class="rv-section-title">المندوبون المسجلون هذا الأسبوع</h3>
         <p class="rv-section-note" id="rv-bookings-note">لا يوجد حجوزات بعد.</p>
@@ -395,6 +434,13 @@
       <button type="button" id="rv-admin-toggle" style="background:none;border:none;color:var(--ink-soft);font-family:'Cairo';font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">دخول لوحة التحكم</button>
     </div>
   </div>
+</div>
+
+<div id="rv-print-sheet" style="display:none;">
+  <img src="doctor-card.jpg" style="width:100%; max-width:520px; display:block; margin:0 auto;" />
+  <div style="text-align:center; margin-top:24px; font-family:'Amiri', serif; font-size:28px; color:#5C2426; font-weight:700;">لحجز موعد زيارة، امسح الكود</div>
+  <div id="rv-print-qr" style="display:flex; justify-content:center; margin-top:20px;"></div>
+  <div style="text-align:center; margin-top:16px; font-family:'Cairo'; font-size:15px; color:#4B5C57;">الأيام المتاحة: السبت، الأحد، الثلاثاء، الأربعاء — من ٥ إلى ٧ مساءً</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -438,14 +484,55 @@
 (function(){
   var ARABIC_DAY_NAMES = {6:'السبت', 0:'الأحد', 2:'الثلاثاء', 3:'الأربعاء'};
   var TARGET_DOW = [6,0,2,3];
-  var SLOT_TIMES = [
-    {label:'٥:٠٠ – ٦:٠٠ م', key:0},
-    {label:'٦:٠٠ – ٧:٠٠ م', key:1}
-  ];
   var ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
   function pad(n){ return n<10 ? '0'+n : ''+n; }
   function isoDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+
+  function toArabicDigits(str){
+    var map = {'0':'٠','1':'١','2':'٢','3':'٣','4':'٤','5':'٥','6':'٦','7':'٧','8':'٨','9':'٩'};
+    return String(str).replace(/[0-9]/g, function(d){ return map[d]; });
+  }
+  function formatClock(totalMinutes){
+    var h = Math.floor(totalMinutes/60), m = Math.round(totalMinutes % 60);
+    var period = h >= 12 ? 'م' : 'ص';
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    return toArabicDigits(h12) + ':' + toArabicDigits(pad(m)) + ' ' + period;
+  }
+
+  var settings = {maxPerDay: 2, startTime: '17:00', endTime: '19:00'};
+
+  function buildSlotTimes(){
+    var sp = settings.startTime.split(':').map(Number);
+    var ep = settings.endTime.split(':').map(Number);
+    var startMin = sp[0]*60 + sp[1];
+    var endMin = ep[0]*60 + ep[1];
+    var count = Math.max(1, parseInt(settings.maxPerDay, 10) || 1);
+    var total = Math.max(count*10, endMin - startMin);
+    var step = total / count;
+    var slots = [];
+    for (var i=0;i<count;i++){
+      var s = Math.round(startMin + i*step);
+      var e = Math.round(startMin + (i+1)*step);
+      slots.push({key:i, label: formatClock(s) + ' – ' + formatClock(e)});
+    }
+    return slots;
+  }
+
+  var SLOT_TIMES = buildSlotTimes();
+
+  function updatePolicyDisplay(){
+    var timeNum = document.getElementById('rv-policy-time-num');
+    var countNum = document.getElementById('rv-policy-count-num');
+    var countLbl = document.getElementById('rv-policy-count-lbl');
+    if (timeNum){
+      var sp = settings.startTime.split(':').map(Number);
+      var ep = settings.endTime.split(':').map(Number);
+      timeNum.textContent = formatClock(sp[0]*60+sp[1]) + ' – ' + formatClock(ep[0]*60+ep[1]);
+    }
+    if (countNum) countNum.textContent = toArabicDigits(settings.maxPerDay);
+    if (countLbl) countLbl.textContent = (parseInt(settings.maxPerDay,10) === 1 ? 'زيارة واحدة' : 'زيارات') + ' كحد أقصى في اليوم الواحد';
+  }
 
   function computeMonthDates(year, month){
     var dates = [];
@@ -894,9 +981,146 @@
   });
 
   loadWhatsAppNumber();
+  loadSettings().then(function(){
+    renderDays();
+  });
   loadBookings().then(function(){
     renderDays();
     renderBookingsList();
+  });
+
+  // ---- settings panel ----
+  var settingCountInput = document.getElementById('rv-setting-count');
+  var settingStartInput = document.getElementById('rv-setting-start');
+  var settingEndInput = document.getElementById('rv-setting-end');
+
+  function applySettingsToInputs(){
+    settingCountInput.value = settings.maxPerDay;
+    settingStartInput.value = settings.startTime;
+    settingEndInput.value = settings.endTime;
+    updatePolicyDisplay();
+  }
+
+  async function loadSettings(){
+    try{
+      var v = await dbGet('config/settings');
+      if (v){
+        if (v.maxPerDay) settings.maxPerDay = v.maxPerDay;
+        if (v.startTime) settings.startTime = v.startTime;
+        if (v.endTime) settings.endTime = v.endTime;
+      }
+    } catch(e){}
+    SLOT_TIMES = buildSlotTimes();
+    applySettingsToInputs();
+  }
+
+  document.getElementById('rv-setting-save').addEventListener('click', async function(){
+    var msg = document.getElementById('rv-setting-msg');
+    var count = parseInt(settingCountInput.value, 10);
+    var start = settingStartInput.value;
+    var end = settingEndInput.value;
+    if (!count || count < 1 || !start || !end || start >= end){
+      msg.textContent = 'برجاء إدخال قيم صحيحة (عدد صحيح، ووقت بداية أقل من وقت النهاية).';
+      msg.className = 'rv-msg err';
+      return;
+    }
+    settings.maxPerDay = count;
+    settings.startTime = start;
+    settings.endTime = end;
+    try{
+      await dbSet('config/settings', settings);
+      SLOT_TIMES = buildSlotTimes();
+      updatePolicyDisplay();
+      selectedDateIso = null;
+      selectedSlotKey = null;
+      renderDays();
+      renderSlots();
+      renderBookingsList();
+      document.getElementById('rv-form').classList.remove('active');
+      msg.textContent = 'تم حفظ الإعدادات وتحديث الجدول.';
+      msg.className = 'rv-msg ok';
+    } catch(e){
+      msg.textContent = 'تعذر الحفظ، حاول مرة أخرى.';
+      msg.className = 'rv-msg err';
+    }
+  });
+
+  // ---- print door sheet ----
+  document.getElementById('rv-print-btn').addEventListener('click', function(){
+    var sheet = document.getElementById('rv-print-sheet');
+    sheet.style.display = 'block';
+    var qrBox = document.getElementById('rv-print-qr');
+    qrBox.innerHTML = '';
+    new QRCode(qrBox, {
+      text: linkInput.value || defaultShareLink,
+      width: 260,
+      height: 260,
+      colorDark: '#5C2426',
+      colorLight: '#ffffff'
+    });
+    setTimeout(function(){
+      window.print();
+      setTimeout(function(){ sheet.style.display = 'none'; }, 500);
+    }, 150);
+  });
+
+  // ---- rep self-service cancellation ----
+  document.getElementById('rv-self-search').addEventListener('click', async function(){
+    var resultsBox = document.getElementById('rv-self-results');
+    var phoneRaw = document.getElementById('rv-self-phone').value;
+    var phoneNorm = normalizePhone(phoneRaw);
+    if (!phoneNorm){
+      resultsBox.innerHTML = '<p class="rv-msg err">من فضلك أدخل رقم هاتف صحيح.</p>';
+      return;
+    }
+    resultsBox.innerHTML = '<p class="rv-section-note">جارٍ البحث…</p>';
+    await loadBookings();
+    var matches = [];
+    week.dates.forEach(function(d){
+      var iso = isoDate(d);
+      var b = bookingsCache[iso] || {};
+      SLOT_TIMES.forEach(function(s){
+        var entry = b[s.key];
+        if (entry && normalizePhone(entry.phone) === phoneNorm){
+          matches.push({
+            dateIso: iso,
+            slotKey: s.key,
+            dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
+            time: s.label,
+            name: entry.name,
+            company: entry.company
+          });
+        }
+      });
+    });
+    if (!matches.length){
+      resultsBox.innerHTML = '<p class="rv-msg err">لم يتم العثور على حجز بهذا الرقم.</p>';
+      return;
+    }
+    var html = '';
+    matches.forEach(function(m, idx){
+      html += '<div class="rv-slot-row">' +
+        '<div><div class="rv-slot-time">' + m.dateLabel + '، ' + m.time + '</div>' +
+        '<div class="rv-slot-status open">' + escapeHtml(m.name) + ' — ' + escapeHtml(m.company) + '</div></div>' +
+        '<button class="rv-slot-pick" data-self-cancel="' + idx + '" type="button">إلغاء الحجز</button>' +
+        '</div>';
+    });
+    resultsBox.innerHTML = html;
+    resultsBox.querySelectorAll('[data-self-cancel]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var m = matches[parseInt(btn.getAttribute('data-self-cancel'), 10)];
+        if (!confirm('هل تريد إلغاء حجزك يوم ' + m.dateLabel + '، ' + m.time + '؟')) return;
+        dbDelete('bookings/' + m.dateIso + '/' + m.slotKey).then(function(){
+          if (bookingsCache[m.dateIso]) delete bookingsCache[m.dateIso][m.slotKey];
+          renderDays();
+          renderBookingsList();
+          if (selectedDateIso === m.dateIso) renderSlots();
+          resultsBox.innerHTML = '<p class="rv-msg ok">تم إلغاء الحجز بنجاح.</p>';
+        }).catch(function(){
+          alert('تعذر إلغاء الحجز، برجاء المحاولة مرة أخرى.');
+        });
+      });
+    });
   });
 })();
 </script>
