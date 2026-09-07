@@ -31,13 +31,18 @@
     line-height: 1.6;
   }
 
+  .rv-doctor-card{
+    width: 100%;
+    display: block;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
   /* header — torn appointment-slip motif */
   .rv-header{
     background: var(--teal);
     color: #F6F4EF;
     padding: 28px 28px 34px;
     position: relative;
-    border-radius: var(--radius) var(--radius) 0 0;
   }
   .rv-header::after{
     content:"";
@@ -318,6 +323,7 @@
 </style>
 
 <div class="rv-root" id="rv-root">
+  <img class="rv-doctor-card" src="doctor-card.jpg" alt="الأستاذ الدكتور محمد البربري - استشاري أمراض القلب والأوعية الدموية" />
   <div class="rv-header">
     <p class="rv-clinic-label">جدول استقبال مندوبي شركات الأدوية</p>
     <h1 class="rv-title">مواعيد الزيارة بالعيادة</h1>
