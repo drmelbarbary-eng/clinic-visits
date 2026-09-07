@@ -7,6 +7,7 @@
     --ink:#1C2B28;
     --ink-soft:#4B5C57;
     --teal:#164A43;
+    --maroon:#5C2426;
     --teal-deep:#0D302B;
     --brass:#B08D4F;
     --brass-soft:#E3D3B0;
@@ -39,7 +40,7 @@
 
   /* header — torn appointment-slip motif */
   .rv-header{
-    background: var(--teal);
+    background: var(--maroon);
     color: #F6F4EF;
     padding: 28px 28px 34px;
     position: relative;
@@ -48,7 +49,7 @@
     content:"";
     position:absolute; right:0; left:0; bottom:-1px; height:14px;
     background:
-      radial-gradient(circle at 10px 0, transparent 7px, var(--teal) 7.5px) 0 -7px / 20px 14px repeat-x;
+      radial-gradient(circle at 10px 0, transparent 7px, var(--maroon) 7.5px) 0 -7px / 20px 14px repeat-x;
   }
   .rv-clinic-label{
     font-size: 13px;
@@ -64,7 +65,7 @@
   }
   .rv-sub{
     font-size: 14.5px;
-    color: #DCE8E4;
+    color: #EAD9CE;
     margin: 0;
     max-width: 46ch;
   }
@@ -334,9 +335,9 @@
   <div class="rv-body">
     <div class="rv-admin-only" id="rv-admin-block-1">
       <div class="rv-policy">
-        <div class="rv-policy-item"><span class="num">٤</span><span class="lbl">أيام أسبوعياً: السبت، الأحد، الثلاثاء، الأربعاء</span></div>
-        <div class="rv-policy-item"><span class="num">٥–٧</span><span class="lbl">مساءً، مدة الزيارة ٤٠ دقيقة</span></div>
-        <div class="rv-policy-item"><span class="num">٣</span><span class="lbl">زيارات كحد أقصى في اليوم الواحد</span></div>
+        <div class="rv-policy-item"><span class="num">٤</span><span class="lbl">أيام في كل أسبوع تفعيل: السبت، الأحد، الثلاثاء، الأربعاء</span></div>
+        <div class="rv-policy-item"><span class="num">٥–٧</span><span class="lbl">مساءً، مدة الزيارة ساعة</span></div>
+        <div class="rv-policy-item"><span class="num">٢</span><span class="lbl">زيارتان كحد أقصى في اليوم الواحد</span></div>
       </div>
       <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد الأسبوع القادم…</h2>
     </div>
@@ -438,36 +439,40 @@
   var ARABIC_DAY_NAMES = {6:'السبت', 0:'الأحد', 2:'الثلاثاء', 3:'الأربعاء'};
   var TARGET_DOW = [6,0,2,3];
   var SLOT_TIMES = [
-    {label:'٥:٠٠ – ٥:٤٠ م', key:0},
-    {label:'٥:٤٠ – ٦:٢٠ م', key:1},
-    {label:'٦:٢٠ – ٧:٠٠ م', key:2}
+    {label:'٥:٠٠ – ٦:٠٠ م', key:0},
+    {label:'٦:٠٠ – ٧:٠٠ م', key:1}
   ];
   var ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
   function pad(n){ return n<10 ? '0'+n : ''+n; }
   function isoDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
 
-  function computeWeekDates(fromDate){
-    var y = fromDate.getFullYear(), m = fromDate.getMonth();
-    var lastDay = new Date(y, m+1, 0);
+  function computeMonthDates(year, month){
     var dates = [];
-    for (var i=0; i<7; i++){
-      var d = new Date(y, m, lastDay.getDate()-i);
+    for (var day=1; day<=7; day++){
+      var d = new Date(year, month, day);
       if (TARGET_DOW.indexOf(d.getDay()) !== -1) dates.push(d);
     }
+    var lastDayNum = new Date(year, month+1, 0).getDate();
+    for (var day2=lastDayNum-6; day2<=lastDayNum; day2++){
+      var d2 = new Date(year, month, day2);
+      if (TARGET_DOW.indexOf(d2.getDay()) !== -1) dates.push(d2);
+    }
     dates.sort(function(a,b){ return a-b; });
-    return {dates: dates, lastOfMonth: dates[dates.length-1], y:y, m:m};
+    return dates;
   }
 
   function getActiveWeek(){
     var today = new Date();
     today.setHours(0,0,0,0);
-    var res = computeWeekDates(today);
-    if (res.lastOfMonth < today){
-      var nextMonthDate = new Date(today.getFullYear(), today.getMonth()+1, 1);
-      res = computeWeekDates(nextMonthDate);
+    var y = today.getFullYear(), m = today.getMonth();
+    var dates = computeMonthDates(y, m).filter(function(d){ return d >= today; });
+    if (!dates.length){
+      var next = new Date(y, m+1, 1);
+      y = next.getFullYear(); m = next.getMonth();
+      dates = computeMonthDates(y, m);
     }
-    return res;
+    return {dates: dates, y:y, m:m};
   }
 
   var week = getActiveWeek();
@@ -504,7 +509,7 @@
   }
 
   document.getElementById('rv-week-title').textContent =
-    'الأسبوع الأخير من ' + ARABIC_MONTHS[week.m] + ' ' + week.y;
+    'الأسبوع الأول والأخير من ' + ARABIC_MONTHS[week.m] + ' ' + week.y;
 
   async function loadBookings(){
     try {
@@ -527,13 +532,13 @@
       var card = document.createElement('div');
       card.className = 'rv-day' + (selectedDateIso === iso ? ' selected' : '');
       var dots = '';
-      for (var i=0;i<3;i++){
+      for (var i=0;i<SLOT_TIMES.length;i++){
         dots += '<span class="rv-dot' + (i < filled ? ' filled' : '') + '"></span>';
       }
       card.innerHTML =
         '<div class="rv-day-name">' + ARABIC_DAY_NAMES[d.getDay()] + '</div>' +
         '<div class="rv-day-date">' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '</div>' +
-        '<div class="rv-day-meter">' + filled + ' / 3 محجوز</div>' +
+        '<div class="rv-day-meter">' + filled + ' / ' + SLOT_TIMES.length + ' محجوز</div>' +
         '<div class="rv-dots">' + dots + '</div>';
       card.addEventListener('click', function(iso){
         return function(){
