@@ -263,6 +263,7 @@
   }
 
   .rv-loading{ text-align:center; padding: 40px 0; color: var(--ink-soft); font-size:13px; }
+  .rv-admin-only{ display:none; }
 
   .rv-blist{ border: 1px solid var(--line); border-radius: var(--radius); overflow:hidden; background:#fff; }
   .rv-brow{
@@ -331,13 +332,15 @@
   </div>
 
   <div class="rv-body">
-    <div class="rv-policy">
-      <div class="rv-policy-item"><span class="num">٤</span><span class="lbl">أيام أسبوعياً: السبت، الأحد، الثلاثاء، الأربعاء</span></div>
-      <div class="rv-policy-item"><span class="num">٥–٧</span><span class="lbl">مساءً، مدة الزيارة ٤٠ دقيقة</span></div>
-      <div class="rv-policy-item"><span class="num">٣</span><span class="lbl">زيارات كحد أقصى في اليوم الواحد</span></div>
+    <div class="rv-admin-only" id="rv-admin-block-1">
+      <div class="rv-policy">
+        <div class="rv-policy-item"><span class="num">٤</span><span class="lbl">أيام أسبوعياً: السبت، الأحد، الثلاثاء، الأربعاء</span></div>
+        <div class="rv-policy-item"><span class="num">٥–٧</span><span class="lbl">مساءً، مدة الزيارة ٤٠ دقيقة</span></div>
+        <div class="rv-policy-item"><span class="num">٣</span><span class="lbl">زيارات كحد أقصى في اليوم الواحد</span></div>
+      </div>
+      <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد الأسبوع القادم…</h2>
     </div>
 
-    <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد الأسبوع القادم…</h2>
     <p class="rv-section-note">اختر يوماً لعرض المواعيد المتاحة والحجز.</p>
 
     <div class="rv-days" id="rv-days"></div>
@@ -361,33 +364,74 @@
       <div class="rv-msg" id="rv-msg"></div>
     </div>
 
-    <div class="rv-share">
-      <div class="rv-qr-box" id="rv-qr"></div>
-      <div class="rv-share-text">
-        <h3 class="rv-section-title">رابط الحجز</h3>
-        <p class="rv-section-note" style="margin-bottom:4px;">بعد نشر هذه الصفحة، الصق رابطها هنا ليتحدث الـQR تلقائياً ليصبح جاهزاً للطباعة أو المشاركة.</p>
-        <div class="rv-link-row">
-          <input type="text" id="rv-link-input" placeholder="الصق رابط الصفحة هنا" />
-          <button class="rv-copy" id="rv-copy-btn">نسخ</button>
+    <div class="rv-admin-only" id="rv-admin-block-2">
+      <div class="rv-share">
+        <div class="rv-qr-box" id="rv-qr"></div>
+        <div class="rv-share-text">
+          <h3 class="rv-section-title">رابط الحجز</h3>
+          <p class="rv-section-note" style="margin-bottom:4px;">بعد نشر هذه الصفحة، الصق رابطها هنا ليتحدث الـQR تلقائياً ليصبح جاهزاً للطباعة أو المشاركة.</p>
+          <div class="rv-link-row">
+            <input type="text" id="rv-link-input" placeholder="الصق رابط الصفحة هنا" />
+            <button class="rv-copy" id="rv-copy-btn">نسخ</button>
+          </div>
+          <p class="rv-section-note" style="margin:12px 0 4px;">رقم واتساب العيادة (لاستقبال تأكيدات الحجز):</p>
+          <div class="rv-link-row">
+            <input type="text" id="rv-whatsapp-input" placeholder="مثال: 201012345678" />
+            <button class="rv-copy" id="rv-whatsapp-save">حفظ</button>
+          </div>
+          <div class="rv-msg" id="rv-whatsapp-msg"></div>
         </div>
-        <p class="rv-section-note" style="margin:12px 0 4px;">رقم واتساب العيادة (لاستقبال تأكيدات الحجز):</p>
-        <div class="rv-link-row">
-          <input type="text" id="rv-whatsapp-input" placeholder="مثال: 201012345678" />
-          <button class="rv-copy" id="rv-whatsapp-save">حفظ</button>
-        </div>
-        <div class="rv-msg" id="rv-whatsapp-msg"></div>
+      </div>
+
+      <div style="margin-top:30px;">
+        <h3 class="rv-section-title">المندوبون المسجلون هذا الأسبوع</h3>
+        <p class="rv-section-note" id="rv-bookings-note">لا يوجد حجوزات بعد.</p>
+        <div id="rv-bookings-list"></div>
       </div>
     </div>
 
-    <div style="margin-top:30px;">
-      <h3 class="rv-section-title">المندوبون المسجلون هذا الأسبوع</h3>
-      <p class="rv-section-note" id="rv-bookings-note">لا يوجد حجوزات بعد.</p>
-      <div id="rv-bookings-list"></div>
+    <div style="text-align:center; margin-top:26px;">
+      <button type="button" id="rv-admin-toggle" style="background:none;border:none;color:var(--ink-soft);font-family:'Cairo';font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">دخول لوحة التحكم</button>
     </div>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){
+  var ADMIN_PIN = '1992';
+  function isAdminUnlocked(){
+    try { return sessionStorage.getItem('rv_admin_unlocked') === 'yes'; } catch(e){ return false; }
+  }
+  function setAdminUnlocked(v){
+    try { sessionStorage.setItem('rv_admin_unlocked', v ? 'yes' : 'no'); } catch(e){}
+  }
+  function applyAdminVisibility(){
+    var show = isAdminUnlocked();
+    document.querySelectorAll('.rv-admin-only').forEach(function(el){
+      el.style.display = show ? '' : 'none';
+    });
+    var btn = document.getElementById('rv-admin-toggle');
+    if (btn) btn.textContent = show ? 'إخفاء لوحة التحكم' : 'دخول لوحة التحكم';
+  }
+  document.getElementById('rv-admin-toggle').addEventListener('click', function(){
+    if (isAdminUnlocked()){
+      setAdminUnlocked(false);
+      applyAdminVisibility();
+      return;
+    }
+    var pin = prompt('أدخل كلمة مرور الإدارة');
+    if (pin === null) return;
+    if (pin === ADMIN_PIN){
+      setAdminUnlocked(true);
+      applyAdminVisibility();
+    } else {
+      alert('كلمة المرور غير صحيحة.');
+    }
+  });
+  applyAdminVisibility();
+})();
+</script>
 <script>
 (function(){
   var ARABIC_DAY_NAMES = {6:'السبت', 0:'الأحد', 2:'الثلاثاء', 3:'الأربعاء'};
