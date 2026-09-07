@@ -452,6 +452,12 @@
     return res.json();
   }
 
+  async function dbDelete(path){
+    var res = await fetch(dbPath(path), { method: 'DELETE' });
+    if (!res.ok) throw new Error('db delete failed');
+    return res.json();
+  }
+
   document.getElementById('rv-week-title').textContent =
     'الأسبوع الأخير من ' + ARABIC_MONTHS[week.m] + ' ' + week.y;
 
@@ -602,6 +608,8 @@
         var entry = b[s.key];
         if (entry){
           rows.push({
+            dateIso: iso,
+            slotKey: s.key,
             time: s.label,
             name: entry.name,
             company: entry.company,
@@ -640,10 +648,14 @@
         } else {
           reminderCell = '<span class="rv-remind-disabled">لا يوجد رقم هاتف</span>';
         }
+        var deleteBtn = '<button class="rv-remind-btn" type="button" style="border-color:var(--taken);color:var(--taken);" ' +
+          'data-delete="1" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
+          'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" ' +
+          'data-datelabel="' + escapeHtml(g.dateLabel) + '" data-time="' + escapeHtml(r.time) + '">حذف</button>';
         html += '<div class="rv-brow">' +
           '<div>' + r.time + '</div>' +
           '<div class="rv-bname">' + escapeHtml(r.name) + '<br><span class="rv-bmeta">' + escapeHtml(r.company) + '</span></div>' +
-          '<div>' + reminderCell + '</div>' +
+          '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + reminderCell + deleteBtn + '</div>' +
           '</div>';
       });
       html += '</div>';
@@ -660,6 +672,41 @@
         'نتشرف بحضوركم.'
       );
       a.href = 'https://wa.me/' + phone + '?text=' + text;
+    });
+
+    // wire delete/cancel buttons
+    list.querySelectorAll('[data-delete]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var name = btn.getAttribute('data-name');
+        var dateLabel = btn.getAttribute('data-datelabel');
+        var time = btn.getAttribute('data-time');
+        var phone = btn.getAttribute('data-phone');
+        var dateIso = btn.getAttribute('data-date-iso');
+        var slotKey = btn.getAttribute('data-slot');
+
+        if (!confirm('هل تريد إلغاء حجز ' + name + ' يوم ' + dateLabel + '، ' + time + '؟')){
+          return;
+        }
+
+        if (phone){
+          var text = encodeURIComponent(
+            'نأسف، تم إلغاء موعد زيارتكم بالعيادة\n' +
+            'اليوم: ' + dateLabel + '\n' +
+            'الموعد: ' + time + '\n' +
+            'برجاء التواصل لحجز موعد آخر عند توفره.'
+          );
+          window.open('https://wa.me/' + normalizePhone(phone) + '?text=' + text, '_blank');
+        }
+
+        dbDelete('bookings/' + dateIso + '/' + slotKey).then(function(){
+          if (bookingsCache[dateIso]) delete bookingsCache[dateIso][slotKey];
+          renderDays();
+          renderBookingsList();
+          if (selectedDateIso === dateIso) renderSlots();
+        }).catch(function(){
+          alert('تعذر إلغاء الحجز، برجاء المحاولة مرة أخرى.');
+        });
+      });
     });
 
     // wire per-day bulk reminder buttons
