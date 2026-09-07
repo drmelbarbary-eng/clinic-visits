@@ -729,8 +729,11 @@
     });
   }
   var linkInput = document.getElementById('rv-link-input');
-  linkInput.value = (window.location && window.location.href && window.location.href.indexOf('about:') !== 0) ? window.location.href : '';
-  renderQR(linkInput.value || 'https://example.com/rep-visits');
+  var defaultShareLink = 'https://drmelbarbary-eng.github.io/clinic-visits/';
+  linkInput.value = (window.location && window.location.href && window.location.href.indexOf('about:') !== 0 && window.location.href.indexOf('http') === 0)
+    ? window.location.href
+    : defaultShareLink;
+  renderQR(linkInput.value);
   linkInput.addEventListener('input', function(){
     renderQR(linkInput.value || ' ');
   });
