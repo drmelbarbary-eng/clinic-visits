@@ -604,6 +604,17 @@
     }
     var bookingPath = 'bookings/' + selectedDateIso + '/' + selectedSlotKey;
     try{
+      var phoneNormCheck = normalizePhone(phone);
+      var nameKeyCheck = slugify(name + '|' + company);
+      var blPhone = null, blName = null;
+      try { blPhone = phoneNormCheck ? await dbGet('blacklist/phone/' + phoneNormCheck) : null; } catch(e){ blPhone = null; }
+      try { blName = await dbGet('blacklist/name/' + nameKeyCheck); } catch(e){ blName = null; }
+      if (blPhone || blName){
+        msg.textContent = 'عذراً، لا يمكن إتمام الحجز. برجاء التواصل مع العيادة مباشرة.';
+        msg.className = 'rv-msg err';
+        return;
+      }
+
       var existing = null;
       try { existing = await dbGet(bookingPath); } catch(e){ existing = null; }
       if (existing){
@@ -644,6 +655,9 @@
 
   function normalizePhone(v){
     return (v || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
+  }
+  function slugify(v){
+    return (v || '').trim().toLowerCase().replace(/\s+/g, '');
   }
 
   function renderBookingsList(){
@@ -702,10 +716,13 @@
           'data-delete="1" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
           'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" ' +
           'data-datelabel="' + escapeHtml(g.dateLabel) + '" data-time="' + escapeHtml(r.time) + '">حذف</button>';
+        var banBtn = '<button class="rv-remind-btn" type="button" style="border-color:#2b2b2b;color:#2b2b2b;" ' +
+          'data-ban="1" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
+          'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" data-company="' + escapeHtml(r.company) + '">غياب (حظر)</button>';
         html += '<div class="rv-brow">' +
           '<div>' + r.time + '</div>' +
           '<div class="rv-bname">' + escapeHtml(r.name) + '<br><span class="rv-bmeta">' + escapeHtml(r.company) + '</span></div>' +
-          '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + reminderCell + deleteBtn + '</div>' +
+          '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + reminderCell + deleteBtn + banBtn + '</div>' +
           '</div>';
       });
       html += '</div>';
@@ -755,6 +772,37 @@
           if (selectedDateIso === dateIso) renderSlots();
         }).catch(function(){
           alert('تعذر إلغاء الحجز، برجاء المحاولة مرة أخرى.');
+        });
+      });
+    });
+
+    // wire ban/no-show buttons
+    list.querySelectorAll('[data-ban]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var name = btn.getAttribute('data-name');
+        var company = btn.getAttribute('data-company');
+        var phone = btn.getAttribute('data-phone');
+        var dateIso = btn.getAttribute('data-date-iso');
+        var slotKey = btn.getAttribute('data-slot');
+
+        if (!confirm('هل تريد تسجيل غياب ' + name + ' وحظره نهائياً من الحجز في المستقبل؟\nهذا الإجراء لا يمكن التراجع عنه من هنا.')){
+          return;
+        }
+
+        var phoneNorm = normalizePhone(phone);
+        var nameKey = slugify(name + '|' + company);
+        var banRecord = {name:name, company:company, phone:phone, bannedAt: new Date().toISOString(), reason:'no-show'};
+        var writes = [dbSet('blacklist/name/' + nameKey, banRecord), dbDelete('bookings/' + dateIso + '/' + slotKey)];
+        if (phoneNorm) writes.push(dbSet('blacklist/phone/' + phoneNorm, banRecord));
+
+        Promise.all(writes).then(function(){
+          if (bookingsCache[dateIso]) delete bookingsCache[dateIso][slotKey];
+          renderDays();
+          renderBookingsList();
+          if (selectedDateIso === dateIso) renderSlots();
+          alert('تم تسجيل الغياب وحظر ' + name + ' نهائياً من الحجز.');
+        }).catch(function(){
+          alert('تعذر تنفيذ الحظر، برجاء المحاولة مرة أخرى.');
         });
       });
     });
