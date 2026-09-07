@@ -1,0 +1,748 @@
+<div dir="rtl" lang="ar" style="all:initial;"></div>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap');
+
+  :root{
+    --paper:#F6F4EF;
+    --ink:#1C2B28;
+    --ink-soft:#4B5C57;
+    --teal:#164A43;
+    --teal-deep:#0D302B;
+    --brass:#B08D4F;
+    --brass-soft:#E3D3B0;
+    --open:#2F6F5E;
+    --open-bg:#E7F0EC;
+    --taken:#A9463B;
+    --taken-bg:#F5E7E4;
+    --line: rgba(28,43,40,0.14);
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  .rv-root{
+    direction: rtl;
+    font-family: 'Cairo', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 0;
+    max-width: 640px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* header — torn appointment-slip motif */
+  .rv-header{
+    background: var(--teal);
+    color: #F6F4EF;
+    padding: 28px 28px 34px;
+    position: relative;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .rv-header::after{
+    content:"";
+    position:absolute; right:0; left:0; bottom:-1px; height:14px;
+    background:
+      radial-gradient(circle at 10px 0, transparent 7px, var(--teal) 7.5px) 0 -7px / 20px 14px repeat-x;
+  }
+  .rv-clinic-label{
+    font-size: 13px;
+    color: var(--brass-soft);
+    margin: 0 0 6px;
+    font-weight: 600;
+  }
+  .rv-title{
+    font-family: 'Amiri', serif;
+    font-size: 30px;
+    font-weight: 700;
+    margin: 0 0 10px;
+  }
+  .rv-sub{
+    font-size: 14.5px;
+    color: #DCE8E4;
+    margin: 0;
+    max-width: 46ch;
+  }
+
+  .rv-body{ padding: 26px 24px 30px; }
+
+  /* policy strip */
+  .rv-policy{
+    display:flex;
+    gap:10px;
+    flex-wrap: wrap;
+    margin-bottom: 26px;
+  }
+  .rv-policy-item{
+    flex: 1 1 130px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    background: #fff;
+  }
+  .rv-policy-item .num{
+    font-family:'Amiri', serif;
+    font-size: 22px;
+    color: var(--teal);
+    font-weight:700;
+    display:block;
+  }
+  .rv-policy-item .lbl{
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+
+  .rv-section-title{
+    font-family:'Amiri', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--teal-deep);
+    margin: 0 0 4px;
+  }
+  .rv-section-note{
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0 0 16px;
+  }
+
+  /* day cards */
+  .rv-days{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .rv-day{
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fff;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .rv-day:hover{ border-color: var(--teal); }
+  .rv-day.selected{
+    border-color: var(--teal);
+    box-shadow: 0 0 0 1px var(--teal) inset;
+    background: #F1F6F4;
+  }
+  .rv-day-name{ font-weight:700; font-size:15px; }
+  .rv-day-date{ font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+  .rv-day-meter{ margin-top:10px; font-size:12px; color: var(--ink-soft); }
+  .rv-dots{ display:flex; gap:4px; margin-top:6px; }
+  .rv-dot{ width:8px; height:8px; border-radius:50%; background: var(--open-bg); border:1px solid var(--open); }
+  .rv-dot.filled{ background: var(--taken); border-color: var(--taken); }
+
+  /* slots */
+  .rv-slots{
+    margin-top: 18px;
+    display:none;
+  }
+  .rv-slots.active{ display:block; }
+  .rv-slot-row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 11px 14px;
+    margin-bottom: 8px;
+    background:#fff;
+  }
+  .rv-slot-time{ font-weight:600; font-size:14px; }
+  .rv-slot-status{ font-size: 12.5px; }
+  .rv-slot-status.open{ color: var(--open); }
+  .rv-slot-status.taken{ color: var(--taken); }
+  .rv-slot-pick{
+    border: 1px solid var(--teal);
+    color: var(--teal);
+    background: transparent;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-family:'Cairo';
+    font-size: 13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .rv-slot-pick:hover{ background: var(--teal); color:#fff; }
+  .rv-slot-pick:disabled{
+    border-color: var(--line);
+    color: var(--ink-soft);
+    cursor: not-allowed;
+  }
+
+  /* form */
+  .rv-form{
+    margin-top: 18px;
+    border: 1px solid var(--brass);
+    border-radius: var(--radius);
+    padding: 18px;
+    background: #FEFCF8;
+    display:none;
+  }
+  .rv-form.active{ display:block; }
+  .rv-form-chosen{
+    font-size: 13.5px;
+    color: var(--teal-deep);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .rv-field{ margin-bottom: 12px; }
+  .rv-field label{ display:block; font-size:12.5px; color: var(--ink-soft); margin-bottom: 4px; }
+  .rv-field input{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius: 7px;
+    padding: 9px 11px;
+    font-family:'Cairo';
+    font-size: 14px;
+    background:#fff;
+    color: var(--ink);
+  }
+  .rv-field input:focus{ outline: 2px solid var(--teal); outline-offset: 1px; }
+  .rv-submit{
+    width:100%;
+    background: var(--brass);
+    color: #2A2110;
+    border:none;
+    border-radius: 8px;
+    padding: 11px;
+    font-family:'Cairo';
+    font-weight:700;
+    font-size: 14.5px;
+    cursor:pointer;
+    margin-top: 4px;
+  }
+  .rv-submit:hover{ filter: brightness(0.95); }
+  .rv-msg{ font-size:13px; margin-top:10px; }
+  .rv-msg.ok{ color: var(--open); }
+  .rv-msg.err{ color: var(--taken); }
+
+  /* share / QR corner */
+  .rv-share{
+    margin-top: 30px;
+    border-top: 1px dashed var(--line);
+    padding-top: 22px;
+    display:flex;
+    gap: 18px;
+    align-items:flex-start;
+    flex-wrap: wrap;
+  }
+  .rv-qr-box{
+    background:#fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 10px;
+    flex: 0 0 auto;
+  }
+  .rv-share-text{ flex: 1 1 220px; }
+  .rv-share-text .rv-section-title{ font-size:17px; }
+  .rv-link-row{ display:flex; gap:6px; margin-top: 8px; }
+  .rv-link-row input{
+    flex:1;
+    border:1px solid var(--line);
+    border-radius:7px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    font-family:'Cairo';
+  }
+  .rv-copy{
+    border:1px solid var(--teal);
+    background:#fff;
+    color:var(--teal);
+    border-radius:7px;
+    padding: 0 12px;
+    font-family:'Cairo';
+    font-size:12.5px;
+    cursor:pointer;
+  }
+
+  .rv-loading{ text-align:center; padding: 40px 0; color: var(--ink-soft); font-size:13px; }
+
+  .rv-blist{ border: 1px solid var(--line); border-radius: var(--radius); overflow:hidden; background:#fff; }
+  .rv-brow{
+    display:grid;
+    grid-template-columns: 1.1fr 1fr 1.3fr;
+    gap: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rv-brow:last-child{ border-bottom:none; }
+  .rv-brow.rv-bhead{ background: var(--open-bg); color: var(--teal-deep); font-weight:700; font-size:12.5px; }
+  .rv-brow .rv-bname{ font-weight:600; }
+  .rv-brow .rv-bmeta{ color: var(--ink-soft); font-size:12px; }
+
+  .rv-wa-btn{
+    display:inline-block;
+    margin-top: 10px;
+    background: #1F7A5C;
+    color: #fff;
+    text-decoration:none;
+    padding: 9px 16px;
+    border-radius: 20px;
+    font-size: 13.5px;
+    font-weight:700;
+  }
+  .rv-wa-btn:hover{ filter: brightness(0.95); }
+
+  .rv-remind-btn{
+    display:inline-block;
+    margin-top: 4px;
+    background: transparent;
+    color: #1F7A5C;
+    border: 1px solid #1F7A5C;
+    text-decoration:none;
+    padding: 4px 11px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight:700;
+  }
+  .rv-remind-btn:hover{ background:#1F7A5C; color:#fff; }
+  .rv-remind-disabled{
+    display:inline-block;
+    margin-top: 4px;
+    color: var(--ink-soft);
+    font-size: 11.5px;
+  }
+  .rv-day-group{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  @media (max-width: 420px){
+    .rv-days{ grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="rv-root" id="rv-root">
+  <div class="rv-header">
+    <p class="rv-clinic-label">جدول استقبال مندوبي شركات الأدوية</p>
+    <h1 class="rv-title">مواعيد الزيارة بالعيادة</h1>
+    <p class="rv-sub">الحجز متاح للأسبوع الأخير من كل شهر فقط، لضمان انتظام العمل بالعيادة وإعطاء وقت كافٍ لكل زيارة.</p>
+  </div>
+
+  <div class="rv-body">
+    <div class="rv-policy">
+      <div class="rv-policy-item"><span class="num">٤</span><span class="lbl">أيام أسبوعياً: السبت، الأحد، الثلاثاء، الأربعاء</span></div>
+      <div class="rv-policy-item"><span class="num">٥–٧</span><span class="lbl">مساءً، مدة الزيارة ٤٠ دقيقة</span></div>
+      <div class="rv-policy-item"><span class="num">٣</span><span class="lbl">زيارات كحد أقصى في اليوم الواحد</span></div>
+    </div>
+
+    <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد الأسبوع القادم…</h2>
+    <p class="rv-section-note">اختر يوماً لعرض المواعيد المتاحة والحجز.</p>
+
+    <div class="rv-days" id="rv-days"></div>
+    <div class="rv-slots" id="rv-slots"></div>
+
+    <div class="rv-form" id="rv-form">
+      <div class="rv-form-chosen" id="rv-form-chosen"></div>
+      <div class="rv-field">
+        <label>اسم المندوب</label>
+        <input type="text" id="rv-name" placeholder="الاسم بالكامل" />
+      </div>
+      <div class="rv-field">
+        <label>شركة الأدوية</label>
+        <input type="text" id="rv-company" placeholder="اسم الشركة" />
+      </div>
+      <div class="rv-field">
+        <label>رقم الهاتف (اختياري)</label>
+        <input type="text" id="rv-phone" placeholder="01xxxxxxxxx" />
+      </div>
+      <button class="rv-submit" id="rv-submit">تأكيد الحجز</button>
+      <div class="rv-msg" id="rv-msg"></div>
+    </div>
+
+    <div class="rv-share">
+      <div class="rv-qr-box" id="rv-qr"></div>
+      <div class="rv-share-text">
+        <h3 class="rv-section-title">رابط الحجز</h3>
+        <p class="rv-section-note" style="margin-bottom:4px;">بعد نشر هذه الصفحة، الصق رابطها هنا ليتحدث الـQR تلقائياً ليصبح جاهزاً للطباعة أو المشاركة.</p>
+        <div class="rv-link-row">
+          <input type="text" id="rv-link-input" placeholder="الصق رابط الصفحة هنا" />
+          <button class="rv-copy" id="rv-copy-btn">نسخ</button>
+        </div>
+        <p class="rv-section-note" style="margin:12px 0 4px;">رقم واتساب العيادة (لاستقبال تأكيدات الحجز):</p>
+        <div class="rv-link-row">
+          <input type="text" id="rv-whatsapp-input" placeholder="مثال: 201012345678" />
+          <button class="rv-copy" id="rv-whatsapp-save">حفظ</button>
+        </div>
+        <div class="rv-msg" id="rv-whatsapp-msg"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:30px;">
+      <h3 class="rv-section-title">المندوبون المسجلون هذا الأسبوع</h3>
+      <p class="rv-section-note" id="rv-bookings-note">لا يوجد حجوزات بعد.</p>
+      <div id="rv-bookings-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){
+  var ARABIC_DAY_NAMES = {6:'السبت', 0:'الأحد', 2:'الثلاثاء', 3:'الأربعاء'};
+  var TARGET_DOW = [6,0,2,3];
+  var SLOT_TIMES = [
+    {label:'٥:٠٠ – ٥:٤٠ م', key:0},
+    {label:'٥:٤٠ – ٦:٢٠ م', key:1},
+    {label:'٦:٢٠ – ٧:٠٠ م', key:2}
+  ];
+  var ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+  function pad(n){ return n<10 ? '0'+n : ''+n; }
+  function isoDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+
+  function computeWeekDates(fromDate){
+    var y = fromDate.getFullYear(), m = fromDate.getMonth();
+    var lastDay = new Date(y, m+1, 0);
+    var dates = [];
+    for (var i=0; i<7; i++){
+      var d = new Date(y, m, lastDay.getDate()-i);
+      if (TARGET_DOW.indexOf(d.getDay()) !== -1) dates.push(d);
+    }
+    dates.sort(function(a,b){ return a-b; });
+    return {dates: dates, lastOfMonth: dates[dates.length-1], y:y, m:m};
+  }
+
+  function getActiveWeek(){
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    var res = computeWeekDates(today);
+    if (res.lastOfMonth < today){
+      var nextMonthDate = new Date(today.getFullYear(), today.getMonth()+1, 1);
+      res = computeWeekDates(nextMonthDate);
+    }
+    return res;
+  }
+
+  var week = getActiveWeek();
+  var selectedDateIso = null;
+  var selectedSlotKey = null;
+  var bookingsCache = {}; // dateIso -> {slotKey: {name, company}}
+  var clinicWhatsApp = '21123411992'; // fallback default
+
+  // ---- Firebase Realtime Database (works on any hosting, no Claude dependency) ----
+  var FIREBASE_DB_URL = 'https://clinic-visits-default-rtdb.europe-west1.firebasedatabase.app';
+
+  function dbPath(path){
+    return FIREBASE_DB_URL.replace(/\/$/, '') + '/' + path + '.json';
+  }
+  async function dbGet(path){
+    var res = await fetch(dbPath(path));
+    if (!res.ok) throw new Error('db read failed');
+    return res.json();
+  }
+  async function dbSet(path, value){
+    var res = await fetch(dbPath(path), {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(value)
+    });
+    if (!res.ok) throw new Error('db write failed');
+    return res.json();
+  }
+
+  document.getElementById('rv-week-title').textContent =
+    'الأسبوع الأخير من ' + ARABIC_MONTHS[week.m] + ' ' + week.y;
+
+  async function loadBookings(){
+    try {
+      var data = await dbGet('bookings');
+      bookingsCache = data || {};
+    } catch(e){ bookingsCache = {}; }
+  }
+
+  function countFilled(dateIso){
+    var b = bookingsCache[dateIso] || {};
+    return Object.keys(b).length;
+  }
+
+  function renderDays(){
+    var wrap = document.getElementById('rv-days');
+    wrap.innerHTML = '';
+    week.dates.forEach(function(d){
+      var iso = isoDate(d);
+      var filled = countFilled(iso);
+      var card = document.createElement('div');
+      card.className = 'rv-day' + (selectedDateIso === iso ? ' selected' : '');
+      var dots = '';
+      for (var i=0;i<3;i++){
+        dots += '<span class="rv-dot' + (i < filled ? ' filled' : '') + '"></span>';
+      }
+      card.innerHTML =
+        '<div class="rv-day-name">' + ARABIC_DAY_NAMES[d.getDay()] + '</div>' +
+        '<div class="rv-day-date">' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '</div>' +
+        '<div class="rv-day-meter">' + filled + ' / 3 محجوز</div>' +
+        '<div class="rv-dots">' + dots + '</div>';
+      card.addEventListener('click', function(iso){
+        return function(){
+          selectedDateIso = iso;
+          selectedSlotKey = null;
+          renderDays();
+          renderSlots();
+          document.getElementById('rv-form').classList.remove('active');
+        };
+      }(iso));
+      wrap.appendChild(card);
+    });
+  }
+
+  function renderSlots(){
+    var box = document.getElementById('rv-slots');
+    if (!selectedDateIso){ box.classList.remove('active'); box.innerHTML=''; return; }
+    box.classList.add('active');
+    box.innerHTML = '';
+    var b = bookingsCache[selectedDateIso] || {};
+    SLOT_TIMES.forEach(function(s){
+      var taken = !!b[s.key];
+      var row = document.createElement('div');
+      row.className = 'rv-slot-row';
+      row.innerHTML =
+        '<div><div class="rv-slot-time">' + s.label + '</div>' +
+        '<div class="rv-slot-status ' + (taken?'taken':'open') + '">' + (taken ? 'محجوز' : 'متاح') + '</div></div>';
+      var btn = document.createElement('button');
+      btn.className = 'rv-slot-pick';
+      btn.textContent = taken ? 'محجوز' : 'اختيار';
+      btn.disabled = taken;
+      btn.addEventListener('click', function(slotKey){
+        return function(){
+          selectedSlotKey = slotKey;
+          openForm();
+        };
+      }(s.key));
+      row.appendChild(btn);
+      box.appendChild(row);
+    });
+  }
+
+  function openForm(){
+    var form = document.getElementById('rv-form');
+    form.classList.add('active');
+    var d = week.dates.find(function(d){ return isoDate(d) === selectedDateIso; });
+    var slotLabel = SLOT_TIMES.find(function(s){ return s.key === selectedSlotKey; }).label;
+    document.getElementById('rv-form-chosen').textContent =
+      'الموعد المختار: ' + ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '، ' + slotLabel;
+    document.getElementById('rv-msg').textContent = '';
+    form.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+
+  document.getElementById('rv-submit').addEventListener('click', async function(){
+    var msg = document.getElementById('rv-msg');
+    var name = document.getElementById('rv-name').value.trim();
+    var company = document.getElementById('rv-company').value.trim();
+    var phone = document.getElementById('rv-phone').value.trim();
+    if (!name || !company){
+      msg.textContent = 'من فضلك أدخل الاسم واسم الشركة.';
+      msg.className = 'rv-msg err';
+      return;
+    }
+    var bookingPath = 'bookings/' + selectedDateIso + '/' + selectedSlotKey;
+    try{
+      var existing = null;
+      try { existing = await dbGet(bookingPath); } catch(e){ existing = null; }
+      if (existing){
+        msg.textContent = 'عذراً، هذا الموعد تم حجزه للتو من مندوب آخر. برجاء اختيار موعد آخر.';
+        msg.className = 'rv-msg err';
+        await loadBookings();
+        renderDays();
+        renderSlots();
+        return;
+      }
+      await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString()});
+      if (!bookingsCache[selectedDateIso]) bookingsCache[selectedDateIso] = {};
+      bookingsCache[selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone};
+      renderDays();
+      renderSlots();
+      renderBookingsList();
+
+      var d = week.dates.find(function(dd){ return isoDate(dd) === selectedDateIso; });
+      var slotLabel = SLOT_TIMES.find(function(s){ return s.key === selectedSlotKey; }).label;
+      var waText = encodeURIComponent(
+        'تأكيد حجز زيارة\n' +
+        'الاسم: ' + name + '\n' +
+        'الشركة: ' + company + '\n' +
+        'اليوم: ' + ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '\n' +
+        'الموعد: ' + slotLabel
+      );
+      var waLink = 'https://wa.me/' + clinicWhatsApp + '?text=' + waText;
+      msg.innerHTML = 'تم تأكيد الحجز بنجاح.<br><a class="rv-wa-btn" href="' + waLink + '" target="_blank" rel="noopener">إرسال تأكيد على واتساب</a>';
+      msg.className = 'rv-msg ok';
+      document.getElementById('rv-name').value = '';
+      document.getElementById('rv-company').value = '';
+      document.getElementById('rv-phone').value = '';
+    } catch(e){
+      msg.textContent = 'تعذر إتمام الحجز، برجاء المحاولة مرة أخرى.';
+      msg.className = 'rv-msg err';
+    }
+  });
+
+  function normalizePhone(v){
+    return (v || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
+  }
+
+  function renderBookingsList(){
+    var note = document.getElementById('rv-bookings-note');
+    var list = document.getElementById('rv-bookings-list');
+    var groups = [];
+    week.dates.forEach(function(d){
+      var iso = isoDate(d);
+      var b = bookingsCache[iso] || {};
+      var rows = [];
+      SLOT_TIMES.forEach(function(s){
+        var entry = b[s.key];
+        if (entry){
+          rows.push({
+            time: s.label,
+            name: entry.name,
+            company: entry.company,
+            phone: entry.phone
+          });
+        }
+      });
+      if (rows.length){
+        groups.push({
+          dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
+          rows: rows
+        });
+      }
+    });
+
+    if (!groups.length){
+      note.textContent = 'لا يوجد حجوزات بعد.';
+      list.innerHTML = '';
+      return;
+    }
+    var total = groups.reduce(function(sum,g){ return sum + g.rows.length; }, 0);
+    note.textContent = 'إجمالي الحجوزات: ' + total;
+
+    var html = '';
+    groups.forEach(function(g, gi){
+      var groupId = 'rv-remind-group-' + gi;
+      html += '<div class="rv-blist" style="margin-bottom:14px;">' +
+        '<div class="rv-brow rv-bhead"><div class="rv-day-group" style="grid-column: 1 / -1;">' +
+          '<span>' + g.dateLabel + '</span>' +
+          '<button class="rv-remind-btn" data-remind-group="' + gi + '" type="button">إرسال تذكير لكل مندوبي اليوم</button>' +
+        '</div></div>';
+      g.rows.forEach(function(r){
+        var reminderCell = '';
+        if (r.phone){
+          reminderCell = '<a class="rv-remind-btn" target="_blank" rel="noopener" data-remind-single="1" data-phone="' + escapeHtml(r.phone) + '" data-date="' + escapeHtml(g.dateLabel) + '" data-time="' + escapeHtml(r.time) + '">تذكير</a>';
+        } else {
+          reminderCell = '<span class="rv-remind-disabled">لا يوجد رقم هاتف</span>';
+        }
+        html += '<div class="rv-brow">' +
+          '<div>' + r.time + '</div>' +
+          '<div class="rv-bname">' + escapeHtml(r.name) + '<br><span class="rv-bmeta">' + escapeHtml(r.company) + '</span></div>' +
+          '<div>' + reminderCell + '</div>' +
+          '</div>';
+      });
+      html += '</div>';
+    });
+    list.innerHTML = html;
+
+    // wire per-rep reminder links
+    list.querySelectorAll('[data-remind-single]').forEach(function(a){
+      var phone = normalizePhone(a.getAttribute('data-phone'));
+      var text = encodeURIComponent(
+        'تذكير بموعد زيارتكم بالعيادة\n' +
+        'اليوم: ' + a.getAttribute('data-date') + '\n' +
+        'الموعد: ' + a.getAttribute('data-time') + '\n' +
+        'نتشرف بحضوركم.'
+      );
+      a.href = 'https://wa.me/' + phone + '?text=' + text;
+    });
+
+    // wire per-day bulk reminder buttons
+    list.querySelectorAll('[data-remind-group]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var gi = parseInt(btn.getAttribute('data-remind-group'), 10);
+        var group = groups[gi];
+        var withPhone = group.rows.filter(function(r){ return !!r.phone; });
+        if (!withPhone.length){
+          alert('لا يوجد أرقام هواتف مسجلة لمندوبي هذا اليوم.');
+          return;
+        }
+        withPhone.forEach(function(r, idx){
+          var text = encodeURIComponent(
+            'تذكير بموعد زيارتكم بالعيادة\n' +
+            'اليوم: ' + group.dateLabel + '\n' +
+            'الموعد: ' + r.time + '\n' +
+            'نتشرف بحضوركم.'
+          );
+          setTimeout(function(){
+            window.open('https://wa.me/' + normalizePhone(r.phone) + '?text=' + text, '_blank');
+          }, idx * 400);
+        });
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return (s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  var whatsappInput = document.getElementById('rv-whatsapp-input');
+  async function loadWhatsAppNumber(){
+    try{
+      var v = await dbGet('config/whatsapp');
+      if (v) clinicWhatsApp = v;
+    } catch(e){}
+    whatsappInput.value = clinicWhatsApp;
+  }
+  document.getElementById('rv-whatsapp-save').addEventListener('click', async function(){
+    var msg = document.getElementById('rv-whatsapp-msg');
+    var normalized = normalizePhone(whatsappInput.value);
+    if (!normalized){
+      msg.textContent = 'رقم غير صالح.';
+      msg.className = 'rv-msg err';
+      return;
+    }
+    try{
+      await dbSet('config/whatsapp', normalized);
+      clinicWhatsApp = normalized;
+      whatsappInput.value = normalized;
+      msg.textContent = 'تم حفظ الرقم.';
+      msg.className = 'rv-msg ok';
+    } catch(e){
+      msg.textContent = 'تعذر الحفظ، حاول مرة أخرى.';
+      msg.className = 'rv-msg err';
+    }
+  });
+
+  // QR code
+  var qrTarget = null;
+  function renderQR(link){
+    var box = document.getElementById('rv-qr');
+    box.innerHTML = '';
+    qrTarget = new QRCode(box, {
+      text: link || ' ',
+      width: 110,
+      height: 110,
+      colorDark: '#164A43',
+      colorLight: '#ffffff'
+    });
+  }
+  var linkInput = document.getElementById('rv-link-input');
+  linkInput.value = (window.location && window.location.href && window.location.href.indexOf('about:') !== 0) ? window.location.href : '';
+  renderQR(linkInput.value || 'https://example.com/rep-visits');
+  linkInput.addEventListener('input', function(){
+    renderQR(linkInput.value || ' ');
+  });
+  document.getElementById('rv-copy-btn').addEventListener('click', function(){
+    linkInput.select();
+    try { document.execCommand('copy'); } catch(e){}
+  });
+
+  loadWhatsAppNumber();
+  loadBookings().then(function(){
+    renderDays();
+    renderBookingsList();
+  });
+})();
+</script>
