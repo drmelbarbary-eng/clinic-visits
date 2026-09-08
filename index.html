@@ -579,7 +579,8 @@
       if (TARGET_DOW.indexOf(d.getDay()) !== -1) dates.push(d);
     }
     var lastDayNum = new Date(year, month+1, 0).getDate();
-    for (var day2=lastDayNum-6; day2<=lastDayNum; day2++){
+    var thirdWeekEnd = Math.min(21, lastDayNum);
+    for (var day2=15; day2<=thirdWeekEnd; day2++){
       var d2 = new Date(year, month, day2);
       if (TARGET_DOW.indexOf(d2.getDay()) !== -1) dates.push(d2);
     }
@@ -634,7 +635,7 @@
   }
 
   document.getElementById('rv-week-title').textContent =
-    'الأسبوع الأول والأخير من ' + ARABIC_MONTHS[week.m] + ' ' + week.y;
+    'الأسبوع الأول والثالث من ' + ARABIC_MONTHS[week.m] + ' ' + week.y;
 
   async function loadBookings(){
     try {
