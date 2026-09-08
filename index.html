@@ -434,6 +434,16 @@
   </div>
 </div>
 
+<div id="rv-generic-modal" style="display:none; position:fixed; inset:0; background:rgba(28,43,40,0.55); z-index:999; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:22px; width:85%; max-width:340px; text-align:center; font-family:'Cairo';">
+    <p id="rv-generic-modal-msg" style="margin:0 0 18px; font-size:14.5px; color:#1C2B28; white-space:pre-line; line-height:1.6;"></p>
+    <div style="display:flex; gap:8px;">
+      <button type="button" id="rv-generic-modal-cancel" style="flex:1; padding:10px; border-radius:8px; border:1px solid rgba(28,43,40,0.2); background:#fff; font-family:'Cairo'; cursor:pointer;">إلغاء</button>
+      <button type="button" id="rv-generic-modal-ok" style="flex:1; padding:10px; border-radius:8px; border:none; background:#164A43; color:#fff; font-family:'Cairo'; font-weight:700; cursor:pointer;">تأكيد</button>
+    </div>
+  </div>
+</div>
+
 <div id="rv-admin-modal" style="display:none; position:fixed; inset:0; background:rgba(28,43,40,0.55); z-index:999; align-items:center; justify-content:center;">
   <div style="background:#fff; border-radius:12px; padding:22px; width:85%; max-width:320px; text-align:center; font-family:'Cairo';">
     <p style="margin:0 0 14px; font-size:15px; color:#1C2B28; font-weight:700;">أدخل كلمة مرور الإدارة</p>
@@ -891,27 +901,25 @@
         var dateIso = btn.getAttribute('data-date-iso');
         var slotKey = btn.getAttribute('data-slot');
 
-        if (!confirm('هل تريد إلغاء حجز ' + name + ' يوم ' + dateLabel + '، ' + time + '؟')){
-          return;
-        }
+        showConfirm('هل تريد إلغاء حجز ' + name + ' يوم ' + dateLabel + '، ' + time + '؟', function(){
+          if (phone){
+            var text = encodeURIComponent(
+              'نأسف، تم إلغاء موعد زيارتكم بالعيادة\n' +
+              'اليوم: ' + dateLabel + '\n' +
+              'الموعد: ' + time + '\n' +
+              'برجاء التواصل لحجز موعد آخر عند توفره.'
+            );
+            window.open('https://wa.me/' + normalizePhone(phone) + '?text=' + text, '_blank');
+          }
 
-        if (phone){
-          var text = encodeURIComponent(
-            'نأسف، تم إلغاء موعد زيارتكم بالعيادة\n' +
-            'اليوم: ' + dateLabel + '\n' +
-            'الموعد: ' + time + '\n' +
-            'برجاء التواصل لحجز موعد آخر عند توفره.'
-          );
-          window.open('https://wa.me/' + normalizePhone(phone) + '?text=' + text, '_blank');
-        }
-
-        dbDelete('bookings/' + dateIso + '/' + slotKey).then(function(){
-          if (bookingsCache[dateIso]) delete bookingsCache[dateIso][slotKey];
-          renderDays();
-          renderBookingsList();
-          if (selectedDateIso === dateIso) renderSlots();
-        }).catch(function(){
-          alert('تعذر إلغاء الحجز، برجاء المحاولة مرة أخرى.');
+          dbDelete('bookings/' + dateIso + '/' + slotKey).then(function(){
+            if (bookingsCache[dateIso]) delete bookingsCache[dateIso][slotKey];
+            renderDays();
+            renderBookingsList();
+            if (selectedDateIso === dateIso) renderSlots();
+          }).catch(function(){
+            showAlert('تعذر إلغاء الحجز، برجاء المحاولة مرة أخرى.');
+          });
         });
       });
     });
@@ -925,24 +933,22 @@
         var dateIso = btn.getAttribute('data-date-iso');
         var slotKey = btn.getAttribute('data-slot');
 
-        if (!confirm('هل تريد تسجيل غياب ' + name + ' وحظره نهائياً من الحجز في المستقبل؟\nهذا الإجراء لا يمكن التراجع عنه من هنا.')){
-          return;
-        }
+        showConfirm('هل تريد تسجيل غياب ' + name + ' وحظره نهائياً من الحجز في المستقبل؟\nهذا الإجراء لا يمكن التراجع عنه من هنا.', function(){
+          var phoneNorm = normalizePhone(phone);
+          var nameKey = slugify(name + '|' + company);
+          var banRecord = {name:name, company:company, phone:phone, bannedAt: new Date().toISOString(), reason:'no-show'};
+          var writes = [dbSet('blacklist/name/' + nameKey, banRecord), dbDelete('bookings/' + dateIso + '/' + slotKey)];
+          if (phoneNorm) writes.push(dbSet('blacklist/phone/' + phoneNorm, banRecord));
 
-        var phoneNorm = normalizePhone(phone);
-        var nameKey = slugify(name + '|' + company);
-        var banRecord = {name:name, company:company, phone:phone, bannedAt: new Date().toISOString(), reason:'no-show'};
-        var writes = [dbSet('blacklist/name/' + nameKey, banRecord), dbDelete('bookings/' + dateIso + '/' + slotKey)];
-        if (phoneNorm) writes.push(dbSet('blacklist/phone/' + phoneNorm, banRecord));
-
-        Promise.all(writes).then(function(){
-          if (bookingsCache[dateIso]) delete bookingsCache[dateIso][slotKey];
-          renderDays();
-          renderBookingsList();
-          if (selectedDateIso === dateIso) renderSlots();
-          alert('تم تسجيل الغياب وحظر ' + name + ' نهائياً من الحجز.');
-        }).catch(function(){
-          alert('تعذر تنفيذ الحظر، برجاء المحاولة مرة أخرى.');
+          Promise.all(writes).then(function(){
+            if (bookingsCache[dateIso]) delete bookingsCache[dateIso][slotKey];
+            renderDays();
+            renderBookingsList();
+            if (selectedDateIso === dateIso) renderSlots();
+            showAlert('تم تسجيل الغياب وحظر ' + name + ' نهائياً من الحجز.');
+          }).catch(function(){
+            showAlert('تعذر تنفيذ الحظر، برجاء المحاولة مرة أخرى.');
+          });
         });
       });
     });
@@ -954,7 +960,7 @@
         var group = groups[gi];
         var withPhone = group.rows.filter(function(r){ return !!r.phone; });
         if (!withPhone.length){
-          alert('لا يوجد أرقام هواتف مسجلة لمندوبي هذا اليوم.');
+          showAlert('لا يوجد أرقام هواتف مسجلة لمندوبي هذا اليوم.');
           return;
         }
         withPhone.forEach(function(r, idx){
@@ -976,6 +982,43 @@
     return (s || '').replace(/[&<>"']/g, function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
+  }
+
+  // ---- in-page confirm/alert modals (replaces browser confirm()/alert() which some in-app browsers block) ----
+  function showConfirm(message, onOk){
+    var modal = document.getElementById('rv-generic-modal');
+    var msg = document.getElementById('rv-generic-modal-msg');
+    var okBtn = document.getElementById('rv-generic-modal-ok');
+    var cancelBtn = document.getElementById('rv-generic-modal-cancel');
+    msg.textContent = message;
+    cancelBtn.style.display = '';
+    okBtn.textContent = 'تأكيد';
+    modal.style.display = 'flex';
+    function cleanup(){
+      modal.style.display = 'none';
+      okBtn.removeEventListener('click', handleOk);
+      cancelBtn.removeEventListener('click', handleCancel);
+    }
+    function handleOk(){ cleanup(); if (onOk) onOk(); }
+    function handleCancel(){ cleanup(); }
+    okBtn.addEventListener('click', handleOk);
+    cancelBtn.addEventListener('click', handleCancel);
+  }
+  function showAlert(message, onOk){
+    var modal = document.getElementById('rv-generic-modal');
+    var msg = document.getElementById('rv-generic-modal-msg');
+    var okBtn = document.getElementById('rv-generic-modal-ok');
+    var cancelBtn = document.getElementById('rv-generic-modal-cancel');
+    msg.textContent = message;
+    cancelBtn.style.display = 'none';
+    okBtn.textContent = 'حسناً';
+    modal.style.display = 'flex';
+    function cleanup(){
+      modal.style.display = 'none';
+      okBtn.removeEventListener('click', handleOk);
+    }
+    function handleOk(){ cleanup(); if (onOk) onOk(); }
+    okBtn.addEventListener('click', handleOk);
   }
 
   var whatsappInput = document.getElementById('rv-whatsapp-input');
@@ -1162,15 +1205,16 @@
     resultsBox.querySelectorAll('[data-self-cancel]').forEach(function(btn){
       btn.addEventListener('click', function(){
         var m = matches[parseInt(btn.getAttribute('data-self-cancel'), 10)];
-        if (!confirm('هل تريد إلغاء حجزك يوم ' + m.dateLabel + '، ' + m.time + '؟')) return;
-        dbDelete('bookings/' + m.dateIso + '/' + m.slotKey).then(function(){
-          if (bookingsCache[m.dateIso]) delete bookingsCache[m.dateIso][m.slotKey];
-          renderDays();
-          renderBookingsList();
-          if (selectedDateIso === m.dateIso) renderSlots();
-          resultsBox.innerHTML = '<p class="rv-msg ok">تم إلغاء الحجز بنجاح.</p>';
-        }).catch(function(){
-          alert('تعذر إلغاء الحجز، برجاء المحاولة مرة أخرى.');
+        showConfirm('هل تريد إلغاء حجزك يوم ' + m.dateLabel + '، ' + m.time + '؟', function(){
+          dbDelete('bookings/' + m.dateIso + '/' + m.slotKey).then(function(){
+            if (bookingsCache[m.dateIso]) delete bookingsCache[m.dateIso][m.slotKey];
+            renderDays();
+            renderBookingsList();
+            if (selectedDateIso === m.dateIso) renderSlots();
+            resultsBox.innerHTML = '<p class="rv-msg ok">تم إلغاء الحجز بنجاح.</p>';
+          }).catch(function(){
+            showAlert('تعذر إلغاء الحجز، برجاء المحاولة مرة أخرى.');
+          });
         });
       });
     });
