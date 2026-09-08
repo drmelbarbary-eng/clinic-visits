@@ -752,9 +752,9 @@
         renderSlots();
         return;
       }
-      await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString()});
+      await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString(), confirmed:false});
       if (!bookingsCache[selectedDateIso]) bookingsCache[selectedDateIso] = {};
-      bookingsCache[selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone};
+      bookingsCache[selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone, confirmed:false};
       renderDays();
       renderSlots();
       renderBookingsList();
@@ -769,8 +769,21 @@
         'الموعد: ' + slotLabel
       );
       var waLink = 'https://wa.me/' + clinicWhatsApp + '?text=' + waText;
-      msg.innerHTML = 'تم تأكيد الحجز بنجاح.<br><a class="rv-wa-btn" href="' + waLink + '" target="_blank" rel="noopener">إرسال تأكيد على واتساب</a>';
+      var confirmPath = bookingPath;
+      var confirmDateIso = selectedDateIso, confirmSlotKey = selectedSlotKey;
+      msg.innerHTML =
+        '<b>الحجز محجوز مبدئياً ولن يُعتمد نهائياً إلا بعد إرسال رسالة التأكيد.</b><br>' +
+        'اضغط الزرار وابعت الرسالة دلوقتي على واتساب:<br>' +
+        '<a class="rv-wa-btn" id="rv-wa-confirm-link" href="' + waLink + '" target="_blank" rel="noopener">إرسال تأكيد على واتساب الآن</a>';
       msg.className = 'rv-msg ok';
+      document.getElementById('rv-wa-confirm-link').addEventListener('click', function(){
+        dbSet(confirmPath + '/confirmed', true).then(function(){
+          if (bookingsCache[confirmDateIso] && bookingsCache[confirmDateIso][confirmSlotKey]){
+            bookingsCache[confirmDateIso][confirmSlotKey].confirmed = true;
+          }
+          renderBookingsList();
+        }).catch(function(){});
+      });
       document.getElementById('rv-name').value = '';
       document.getElementById('rv-company').value = '';
       document.getElementById('rv-phone').value = '';
@@ -804,7 +817,8 @@
             time: s.label,
             name: entry.name,
             company: entry.company,
-            phone: entry.phone
+            phone: entry.phone,
+            confirmed: !!entry.confirmed
           });
         }
       });
@@ -847,7 +861,7 @@
           'data-ban="1" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
           'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" data-company="' + escapeHtml(r.company) + '">غياب (حظر)</button>';
         html += '<div class="rv-brow">' +
-          '<div>' + r.time + '</div>' +
+          '<div>' + r.time + '<br><span class="' + (r.confirmed ? 'rv-slot-status open' : 'rv-slot-status taken') + '" style="font-size:11px;">' + (r.confirmed ? '✓ مؤكد واتساب' : '⏳ لم يؤكد بعد') + '</span></div>' +
           '<div class="rv-bname">' + escapeHtml(r.name) + '<br><span class="rv-bmeta">' + escapeHtml(r.company) + '</span></div>' +
           '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + reminderCell + deleteBtn + banBtn + '</div>' +
           '</div>';
