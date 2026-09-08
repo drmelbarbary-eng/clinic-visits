@@ -339,7 +339,7 @@
   <div class="rv-body">
     <div class="rv-admin-only" id="rv-admin-block-1">
       <div class="rv-policy">
-        <div class="rv-policy-item"><span class="num">٤</span><span class="lbl">أيام في كل أسبوع تفعيل: السبت، الأحد، الثلاثاء، الخميس</span></div>
+        <div class="rv-policy-item"><span class="num">٤</span><span class="lbl">أيام في كل أسبوع تفعيل: السبت، الأحد، الثلاثاء، الأربعاء</span></div>
         <div class="rv-policy-item"><span class="num" id="rv-policy-time-num">٥–٧</span><span class="lbl">مساءً</span></div>
         <div class="rv-policy-item"><span class="num" id="rv-policy-count-num">٢</span><span class="lbl" id="rv-policy-count-lbl">زيارتان كحد أقصى في اليوم الواحد</span></div>
       </div>
@@ -460,7 +460,7 @@
   <img src="doctor-card.jpg" style="width:100%; max-width:520px; display:block; margin:0 auto;" />
   <div style="text-align:center; margin-top:24px; font-family:'Amiri', serif; font-size:28px; color:#5C2426; font-weight:700;">حجز مواعيد زيارة السادة المندوبين</div>
   <div id="rv-print-qr" style="display:flex; justify-content:center; margin-top:20px;"></div>
-  <div style="text-align:center; margin-top:16px; font-family:'Cairo'; font-size:15px; color:#4B5C57;">الأيام المتاحة: السبت، الأحد، الثلاثاء، الخميس — من ٥ إلى ٧ مساءً</div>
+  <div style="text-align:center; margin-top:16px; font-family:'Cairo'; font-size:15px; color:#4B5C57;">الأيام المتاحة: السبت، الأحد، الثلاثاء، الأربعاء — من ٥ إلى ٧ مساءً</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -530,8 +530,8 @@
 </script>
 <script>
 (function(){
-  var ARABIC_DAY_NAMES = {6:'السبت', 0:'الأحد', 2:'الثلاثاء', 4:'الخميس'};
-  var TARGET_DOW = [6,0,2,4];
+  var ARABIC_DAY_NAMES = {6:'السبت', 0:'الأحد', 2:'الثلاثاء', 3:'الأربعاء'};
+  var TARGET_DOW = [6,0,2,3];
   var ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
   function pad(n){ return n<10 ? '0'+n : ''+n; }
@@ -1049,18 +1049,24 @@
     }
   });
 
-  // QR code
+  // QR code — wrapped so a failed CDN load never breaks anything else on the page
   var qrTarget = null;
   function renderQR(link){
-    var box = document.getElementById('rv-qr');
-    box.innerHTML = '';
-    qrTarget = new QRCode(box, {
-      text: link || ' ',
-      width: 110,
-      height: 110,
-      colorDark: '#164A43',
-      colorLight: '#ffffff'
-    });
+    try{
+      var box = document.getElementById('rv-qr');
+      box.innerHTML = '';
+      if (typeof QRCode === 'undefined'){
+        box.innerHTML = '<div style="font-size:11px; color:var(--ink-soft); padding:8px; text-align:center; width:110px;">تعذر تحميل مكتبة QR (تحقق من الاتصال بالإنترنت)</div>';
+        return;
+      }
+      qrTarget = new QRCode(box, {
+        text: link || ' ',
+        width: 110,
+        height: 110,
+        colorDark: '#164A43',
+        colorLight: '#ffffff'
+      });
+    } catch(e){ /* never let a QR failure break the rest of the page */ }
   }
   var linkInput = document.getElementById('rv-link-input');
   var defaultShareLink = 'https://drmelbarbary-eng.github.io/clinic-visits/';
@@ -1147,13 +1153,19 @@
     sheet.style.display = 'block';
     var qrBox = document.getElementById('rv-print-qr');
     qrBox.innerHTML = '';
-    new QRCode(qrBox, {
-      text: linkInput.value || defaultShareLink,
-      width: 260,
-      height: 260,
-      colorDark: '#5C2426',
-      colorLight: '#ffffff'
-    });
+    try{
+      if (typeof QRCode !== 'undefined'){
+        new QRCode(qrBox, {
+          text: linkInput.value || defaultShareLink,
+          width: 260,
+          height: 260,
+          colorDark: '#5C2426',
+          colorLight: '#ffffff'
+        });
+      } else {
+        qrBox.textContent = linkInput.value || defaultShareLink;
+      }
+    } catch(e){ /* never block printing over a QR failure */ }
     setTimeout(function(){
       window.print();
       setTimeout(function(){ sheet.style.display = 'none'; }, 500);
