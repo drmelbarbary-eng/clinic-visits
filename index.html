@@ -481,7 +481,7 @@
     <div style="text-align:center; margin-top:26px;">
       <button type="button" id="rv-admin-toggle" style="background:none;border:none;color:var(--ink-soft);font-family:'Cairo';font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">دخول لوحة التحكم</button>
     </div>
-    <p style="text-align:center; font-size:10px; color:#B7C0BC; margin-top:4px;">نسخة الصفحة: 2026-09-09 &nbsp;2:50م</p>
+    <p style="text-align:center; font-size:10px; color:#B7C0BC; margin-top:4px;">نسخة الصفحة: 2026-09-09 &nbsp;3:05م</p>
   </div>
 </div>
 
@@ -832,7 +832,13 @@
       var blPhone = null, blName = null;
       try { blPhone = phoneNormCheck ? await dbGet('blacklist/phone/' + phoneNormCheck) : null; } catch(e){ blPhone = null; }
       try { blName = await dbGet('blacklist/name/' + nameKeyCheck); } catch(e){ blName = null; }
-      if (blPhone || blName){
+      var now = Date.now();
+      var stillBanned = function(bl){
+        if (!bl) return false;
+        if (!bl.banUntil) return true; // legacy record with no expiry
+        return new Date(bl.banUntil).getTime() > now;
+      };
+      if (stillBanned(blPhone) || stillBanned(blName)){
         msg.textContent = 'عذراً، لا يمكن إتمام الحجز. برجاء التواصل مع العيادة مباشرة.';
         msg.className = 'rv-msg err';
         return;
@@ -878,7 +884,8 @@
             '١. الزيارة بميعاد سابق ولا يوجد استثناءات.<br>' +
             '٢. عدم الإطالة عند عرض مميزات المنتج.<br>' +
             '٣. عدم سؤال الطبيب إذا ما كان يقوم بكتابة الدواء من عدمه.<br>' +
-            '٤. عدم إرسال رسائل واتساب ترويجية.' +
+            '٤. عدم إرسال رسائل واتساب ترويجية.<br>' +
+            '٥. في حال حجز موعد وعدم الحضور، يتم منع الحجز لمدة شهرين.' +
           '</div>' +
           '<div style="font-size:12px; color:var(--ink-soft); margin-top:10px; text-align:left;">أ.د/ محمد البربري</div>' +
         '</div>';
@@ -1039,10 +1046,11 @@
         var dateIso = btn.getAttribute('data-date-iso');
         var slotKey = btn.getAttribute('data-slot');
 
-        showConfirm('هل تريد تسجيل غياب ' + name + ' وحظره نهائياً من الحجز في المستقبل؟\nهذا الإجراء لا يمكن التراجع عنه من هنا.', function(){
+        showConfirm('هل تريد تسجيل غياب ' + name + ' ومنعه من الحجز لمدة شهرين؟', function(){
           var phoneNorm = normalizePhone(phone);
           var nameKey = slugify(name + '|' + company);
-          var banRecord = {name:name, company:company, phone:phone, bannedAt: new Date().toISOString(), reason:'no-show'};
+          var banUntil = new Date(Date.now() + 60*24*60*60*1000).toISOString();
+          var banRecord = {name:name, company:company, phone:phone, bannedAt: new Date().toISOString(), banUntil: banUntil, reason:'no-show'};
           var writes = [dbSet('blacklist/name/' + nameKey, banRecord), dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey)];
           if (phoneNorm) writes.push(dbSet('blacklist/phone/' + phoneNorm, banRecord));
 
@@ -1051,7 +1059,7 @@
             renderDays();
             renderBookingsList();
             if (selectedDateIso === dateIso) renderSlots();
-            showAlert('تم تسجيل الغياب وحظر ' + name + ' نهائياً من الحجز.');
+            showAlert('تم تسجيل الغياب ومنع ' + name + ' من الحجز لمدة شهرين.');
           }).catch(function(){
             showAlert('تعذر تنفيذ الحظر، برجاء المحاولة مرة أخرى.');
           });
