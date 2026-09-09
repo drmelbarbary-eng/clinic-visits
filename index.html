@@ -438,7 +438,7 @@
     <div style="text-align:center; margin-top:26px;">
       <button type="button" id="rv-admin-toggle" style="background:none;border:none;color:var(--ink-soft);font-family:'Cairo';font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">دخول لوحة التحكم</button>
     </div>
-    <p style="text-align:center; font-size:10px; color:#B7C0BC; margin-top:4px;">نسخة الصفحة: 2026-09-09 &nbsp;1:50م</p>
+    <p style="text-align:center; font-size:10px; color:#B7C0BC; margin-top:4px;">نسخة الصفحة: 2026-09-09 &nbsp;2:05م</p>
   </div>
 </div>
 
@@ -659,13 +659,30 @@
     return Object.keys(b).length;
   }
 
+  var BLOCKED_DOW = [1, 4]; // Monday, Thursday — reserved for the Mahalla Marhoum clinic
+  var BLOCKED_NOTE = 'مخصص لعيادة محلة مرحوم';
+
   function renderDays(){
     var wrap = document.getElementById('rv-days');
     wrap.innerHTML = '';
     week.dates.forEach(function(d){
       var iso = isoDate(d);
-      var filled = countFilled(iso);
+      var isBlocked = BLOCKED_DOW.indexOf(d.getDay()) !== -1;
       var card = document.createElement('div');
+
+      if (isBlocked){
+        card.className = 'rv-day';
+        card.style.opacity = '0.55';
+        card.style.cursor = 'not-allowed';
+        card.innerHTML =
+          '<div class="rv-day-name">' + ARABIC_DAY_NAMES[d.getDay()] + '</div>' +
+          '<div class="rv-day-date">' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '</div>' +
+          '<div class="rv-day-meter" style="color:var(--taken); font-weight:600;">' + BLOCKED_NOTE + '</div>';
+        wrap.appendChild(card);
+        return;
+      }
+
+      var filled = countFilled(iso);
       card.className = 'rv-day' + (selectedDateIso === iso ? ' selected' : '');
       var dots = '';
       for (var i=0;i<SLOT_TIMES.length;i++){
@@ -735,6 +752,12 @@
     var phone = document.getElementById('rv-phone').value.trim();
     if (!name || !company){
       msg.textContent = 'من فضلك أدخل الاسم واسم الشركة.';
+      msg.className = 'rv-msg err';
+      return;
+    }
+    var selectedDateObj = week.dates.find(function(dd){ return isoDate(dd) === selectedDateIso; });
+    if (selectedDateObj && BLOCKED_DOW.indexOf(selectedDateObj.getDay()) !== -1){
+      msg.textContent = 'هذا اليوم غير متاح للحجز (' + BLOCKED_NOTE + ').';
       msg.className = 'rv-msg err';
       return;
     }
