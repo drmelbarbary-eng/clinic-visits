@@ -471,6 +471,24 @@
         <button type="button" id="rv-print-btn" style="margin-top:16px; width:100%; border:1px solid var(--maroon); color:var(--maroon); background:#fff; border-radius:8px; padding:10px; font-family:'Cairo'; font-weight:700; cursor:pointer;">🖨️ طباعة نسخة للباب</button>
       </div>
 
+      <div style="margin-top:16px; border:1px solid var(--brass); border-radius: var(--radius); padding:16px; background:#FEFCF8;">
+        <h3 class="rv-section-title" style="font-size:17px;">تغيير كلمة مرور لوحة التحكم</h3>
+        <div class="rv-field">
+          <label>كلمة المرور الحالية</label>
+          <input type="password" id="rv-pin-current" inputmode="numeric" />
+        </div>
+        <div class="rv-field">
+          <label>كلمة المرور الجديدة</label>
+          <input type="password" id="rv-pin-new" inputmode="numeric" />
+        </div>
+        <div class="rv-field">
+          <label>تأكيد كلمة المرور الجديدة</label>
+          <input type="password" id="rv-pin-confirm" inputmode="numeric" />
+        </div>
+        <button class="rv-submit" id="rv-pin-save">حفظ كلمة المرور الجديدة</button>
+        <div class="rv-msg" id="rv-pin-msg"></div>
+      </div>
+
       <div style="margin-top:30px;">
         <h3 class="rv-section-title">المندوبون المسجلون هذا الأسبوع</h3>
         <p class="rv-section-note" id="rv-bookings-note">لا يوجد حجوزات بعد.</p>
@@ -481,7 +499,7 @@
     <div style="text-align:center; margin-top:26px;">
       <button type="button" id="rv-admin-toggle" style="background:none;border:none;color:var(--ink-soft);font-family:'Cairo';font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">دخول لوحة التحكم</button>
     </div>
-    <p style="text-align:center; font-size:10px; color:#B7C0BC; margin-top:4px;">نسخة الصفحة: 2026-09-09 &nbsp;3:05م</p>
+    <p style="text-align:center; font-size:10px; color:#B7C0BC; margin-top:4px;">نسخة الصفحة: 2026-09-09 &nbsp;3:20م</p>
   </div>
 </div>
 
@@ -517,7 +535,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 (function(){
-  var ADMIN_PIN = '1397';
+  window.RV_ADMIN_PIN_DEFAULT = '1397';
   var adminUnlocked = false;
   try { adminUnlocked = sessionStorage.getItem('rv_admin_unlocked') === 'yes'; } catch(e){ adminUnlocked = false; }
 
@@ -546,7 +564,8 @@
     modal.style.display = 'none';
   }
   function attemptUnlock(){
-    if (pinInput.value === ADMIN_PIN){
+    var activePin = window.RV_ADMIN_PIN || window.RV_ADMIN_PIN_DEFAULT;
+    if (pinInput.value === activePin){
       adminUnlocked = true;
       persistUnlocked(true);
       applyAdminVisibility();
@@ -1194,6 +1213,50 @@
   document.getElementById('rv-copy-btn').addEventListener('click', function(){
     linkInput.select();
     try { document.execCommand('copy'); } catch(e){}
+  });
+
+  async function loadAdminPin(){
+    try{
+      var v = await dbGet('config/admin_pin');
+      if (v) window.RV_ADMIN_PIN = v;
+    } catch(e){}
+  }
+  loadAdminPin();
+
+  document.getElementById('rv-pin-save').addEventListener('click', async function(){
+    var msg = document.getElementById('rv-pin-msg');
+    var current = document.getElementById('rv-pin-current').value;
+    var next = document.getElementById('rv-pin-new').value;
+    var confirmNext = document.getElementById('rv-pin-confirm').value;
+    var activePin = window.RV_ADMIN_PIN || window.RV_ADMIN_PIN_DEFAULT;
+
+    if (current !== activePin){
+      msg.textContent = 'كلمة المرور الحالية غير صحيحة.';
+      msg.className = 'rv-msg err';
+      return;
+    }
+    if (!next || next.length < 4){
+      msg.textContent = 'كلمة المرور الجديدة يجب أن تكون ٤ أرقام على الأقل.';
+      msg.className = 'rv-msg err';
+      return;
+    }
+    if (next !== confirmNext){
+      msg.textContent = 'كلمة المرور الجديدة وتأكيدها غير متطابقين.';
+      msg.className = 'rv-msg err';
+      return;
+    }
+    try{
+      await dbSet('config/admin_pin', next);
+      window.RV_ADMIN_PIN = next;
+      document.getElementById('rv-pin-current').value = '';
+      document.getElementById('rv-pin-new').value = '';
+      document.getElementById('rv-pin-confirm').value = '';
+      msg.textContent = 'تم تغيير كلمة المرور بنجاح.';
+      msg.className = 'rv-msg ok';
+    } catch(e){
+      msg.textContent = 'تعذر الحفظ، حاول مرة أخرى.';
+      msg.className = 'rv-msg err';
+    }
   });
 
   loadWhatsAppNumber();
