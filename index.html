@@ -270,6 +270,23 @@
 
   .rv-loading{ text-align:center; padding: 40px 0; color: var(--ink-soft); font-size:13px; }
   .rv-admin-only{ display:none; }
+  .rv-clinic-chip{
+    flex:1;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius: 10px;
+    padding: 14px 8px;
+    font-family:'Cairo';
+    font-weight:700;
+    font-size:13.5px;
+    color: var(--ink);
+    cursor:pointer;
+  }
+  .rv-clinic-chip.selected{
+    border-color: var(--maroon);
+    background: #FBEFE9;
+    color: var(--maroon);
+  }
 
   @media print {
     body *{ visibility: hidden; }
@@ -346,14 +363,19 @@
   <div class="rv-body">
     <div class="rv-admin-only" id="rv-admin-block-1">
       <div class="rv-policy">
-        <div class="rv-policy-item"><span class="num">٧</span><span class="lbl">أيام الأسبوع بالكامل — كل يوم متاح للحجز</span></div>
+        <div class="rv-policy-item"><span class="num" id="rv-policy-days-num">٤/٢</span><span class="lbl" id="rv-policy-days-lbl">أيام الأسبوع حسب العيادة المختارة</span></div>
         <div class="rv-policy-item"><span class="num" id="rv-policy-time-num">٥–٧</span><span class="lbl">مساءً</span></div>
         <div class="rv-policy-item"><span class="num" id="rv-policy-count-num">٢</span><span class="lbl" id="rv-policy-count-lbl">زيارتان كحد أقصى في اليوم الواحد</span></div>
       </div>
-      <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد الأسبوع القادم…</h2>
+      <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد المواعيد…</h2>
     </div>
 
-    <p class="rv-section-note">اختر يوماً لعرض المواعيد المتاحة والحجز.</p>
+    <p class="rv-section-note">اختر مكان العيادة أولاً، ثم اليوم المناسب للحجز.</p>
+
+    <div style="display:flex; gap:10px; margin-bottom:18px;">
+      <button type="button" class="rv-clinic-chip" data-clinic="tanta" id="rv-clinic-tanta">عيادة طنطا</button>
+      <button type="button" class="rv-clinic-chip" data-clinic="mahalla" id="rv-clinic-mahalla">عيادة محلة مرحوم</button>
+    </div>
 
     <div class="rv-days" id="rv-days"></div>
     <div class="rv-slots" id="rv-slots"></div>
@@ -406,24 +428,45 @@
       </div>
 
       <div style="margin-top:24px; border:1px solid var(--brass); border-radius: var(--radius); padding:16px; background:#FEFCF8;">
-        <h3 class="rv-section-title" style="font-size:17px;">إعدادات الحجز</h3>
-        <p class="rv-section-note" style="margin-bottom:10px;">تحكم في عدد المندوبين يومياً ومواعيد الاستقبال من هنا مباشرة، من غير الحاجة لتعديل الصفحة.</p>
+        <h3 class="rv-section-title" style="font-size:17px;">إعدادات الحجز — عيادة طنطا</h3>
+        <p class="rv-section-note" style="margin-bottom:10px;">أيام الحجز: كل يوم ما عدا الاثنين والخميس والجمعة.</p>
         <div class="rv-field">
           <label>عدد المندوبين المسموح به يومياً</label>
-          <input type="number" id="rv-setting-count" min="1" max="10" />
+          <input type="number" id="rv-setting-count-tanta" min="1" max="10" />
         </div>
         <div style="display:flex; gap:10px;">
           <div class="rv-field" style="flex:1;">
             <label>من الساعة</label>
-            <input type="time" id="rv-setting-start" />
+            <input type="time" id="rv-setting-start-tanta" />
           </div>
           <div class="rv-field" style="flex:1;">
             <label>إلى الساعة</label>
-            <input type="time" id="rv-setting-end" />
+            <input type="time" id="rv-setting-end-tanta" />
           </div>
         </div>
-        <button class="rv-submit" id="rv-setting-save">حفظ الإعدادات</button>
-        <div class="rv-msg" id="rv-setting-msg"></div>
+        <button class="rv-submit" id="rv-setting-save-tanta">حفظ إعدادات عيادة طنطا</button>
+        <div class="rv-msg" id="rv-setting-msg-tanta"></div>
+      </div>
+
+      <div style="margin-top:16px; border:1px solid var(--brass); border-radius: var(--radius); padding:16px; background:#FEFCF8;">
+        <h3 class="rv-section-title" style="font-size:17px;">إعدادات الحجز — عيادة محلة مرحوم</h3>
+        <p class="rv-section-note" style="margin-bottom:10px;">أيام الحجز: الاثنين والخميس فقط.</p>
+        <div class="rv-field">
+          <label>عدد المندوبين المسموح به يومياً</label>
+          <input type="number" id="rv-setting-count-mahalla" min="1" max="10" />
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div class="rv-field" style="flex:1;">
+            <label>من الساعة</label>
+            <input type="time" id="rv-setting-start-mahalla" />
+          </div>
+          <div class="rv-field" style="flex:1;">
+            <label>إلى الساعة</label>
+            <input type="time" id="rv-setting-end-mahalla" />
+          </div>
+        </div>
+        <button class="rv-submit" id="rv-setting-save-mahalla">حفظ إعدادات عيادة محلة مرحوم</button>
+        <div class="rv-msg" id="rv-setting-msg-mahalla"></div>
 
         <button type="button" id="rv-print-btn" style="margin-top:16px; width:100%; border:1px solid var(--maroon); color:var(--maroon); background:#fff; border-radius:8px; padding:10px; font-family:'Cairo'; font-weight:700; cursor:pointer;">🖨️ طباعة نسخة للباب</button>
       </div>
@@ -438,7 +481,7 @@
     <div style="text-align:center; margin-top:26px;">
       <button type="button" id="rv-admin-toggle" style="background:none;border:none;color:var(--ink-soft);font-family:'Cairo';font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">دخول لوحة التحكم</button>
     </div>
-    <p style="text-align:center; font-size:10px; color:#B7C0BC; margin-top:4px;">نسخة الصفحة: 2026-09-09 &nbsp;2:05م</p>
+    <p style="text-align:center; font-size:10px; color:#B7C0BC; margin-top:4px;">نسخة الصفحة: 2026-09-09 &nbsp;2:45م</p>
   </div>
 </div>
 
@@ -555,14 +598,22 @@
     return toArabicDigits(h12) + ':' + toArabicDigits(pad(m)) + ' ' + period;
   }
 
-  var settings = {maxPerDay: 2, startTime: '17:00', endTime: '19:00'};
+  var CLINICS = {
+    tanta: {label: 'عيادة طنطا', allowedDow: [0,2,3,6]},   // Sun, Tue, Wed, Sat
+    mahalla: {label: 'عيادة محلة مرحوم', allowedDow: [1,4]} // Mon, Thu
+  };
 
-  function buildSlotTimes(){
-    var sp = settings.startTime.split(':').map(Number);
-    var ep = settings.endTime.split(':').map(Number);
+  var clinicSettings = {
+    tanta:   {maxPerDay: 2, startTime: '17:00', endTime: '19:00'},
+    mahalla: {maxPerDay: 2, startTime: '20:00', endTime: '22:00'}
+  };
+
+  function buildSlotTimes(cfg){
+    var sp = cfg.startTime.split(':').map(Number);
+    var ep = cfg.endTime.split(':').map(Number);
     var startMin = sp[0]*60 + sp[1];
     var endMin = ep[0]*60 + ep[1];
-    var count = Math.max(1, parseInt(settings.maxPerDay, 10) || 1);
+    var count = Math.max(1, parseInt(cfg.maxPerDay, 10) || 1);
     var total = Math.max(count*10, endMin - startMin);
     var step = total / count;
     var slots = [];
@@ -574,47 +625,58 @@
     return slots;
   }
 
-  var SLOT_TIMES = buildSlotTimes();
+  var currentClinic = null;
+  var SLOT_TIMES = [];
+  var week = null;
 
   function updatePolicyDisplay(){
     var timeNum = document.getElementById('rv-policy-time-num');
     var countNum = document.getElementById('rv-policy-count-num');
     var countLbl = document.getElementById('rv-policy-count-lbl');
+    var daysNum = document.getElementById('rv-policy-days-num');
+    var daysLbl = document.getElementById('rv-policy-days-lbl');
+    if (!currentClinic){
+      if (daysLbl) daysLbl.textContent = 'اختر مكان العيادة لعرض التفاصيل';
+      return;
+    }
+    var cfg = clinicSettings[currentClinic];
     if (timeNum){
-      var sp = settings.startTime.split(':').map(Number);
-      var ep = settings.endTime.split(':').map(Number);
+      var sp = cfg.startTime.split(':').map(Number);
+      var ep = cfg.endTime.split(':').map(Number);
       timeNum.textContent = formatClock(sp[0]*60+sp[1]) + ' – ' + formatClock(ep[0]*60+ep[1]);
     }
-    if (countNum) countNum.textContent = toArabicDigits(settings.maxPerDay);
-    if (countLbl) countLbl.textContent = (parseInt(settings.maxPerDay,10) === 1 ? 'زيارة واحدة' : 'زيارات') + ' كحد أقصى في اليوم الواحد';
+    if (countNum) countNum.textContent = toArabicDigits(cfg.maxPerDay);
+    if (countLbl) countLbl.textContent = (parseInt(cfg.maxPerDay,10) === 1 ? 'زيارة واحدة' : 'زيارات') + ' كحد أقصى في اليوم الواحد';
+    if (daysNum) daysNum.textContent = toArabicDigits(CLINICS[currentClinic].allowedDow.length);
+    if (daysLbl) daysLbl.textContent = 'أيام أسبوعياً — ' + CLINICS[currentClinic].label;
   }
 
-  function computeMonthDates(year, month){
+  function computeMonthDatesForClinic(year, month, allowedDow){
     var dates = [];
     var lastDayNum = new Date(year, month+1, 0).getDate();
     for (var day=1; day<=lastDayNum; day++){
-      dates.push(new Date(year, month, day));
+      var d = new Date(year, month, day);
+      if (allowedDow.indexOf(d.getDay()) !== -1) dates.push(d);
     }
     return dates;
   }
 
-  function getActiveWeek(){
+  function getActiveWeekForClinic(allowedDow){
     var today = new Date();
     today.setHours(0,0,0,0);
     var y = today.getFullYear(), m = today.getMonth();
-    var dates = computeMonthDates(y, m).filter(function(d){ return d >= today; });
+    var dates = computeMonthDatesForClinic(y, m, allowedDow).filter(function(d){ return d >= today; });
     if (!dates.length){
       var next = new Date(y, m+1, 1);
       y = next.getFullYear(); m = next.getMonth();
-      dates = computeMonthDates(y, m);
+      dates = computeMonthDatesForClinic(y, m, allowedDow);
     }
     return {dates: dates, y:y, m:m};
   }
 
-  var week = getActiveWeek();
   var selectedDateIso = null;
   var selectedSlotKey = null;
-  var bookingsCache = {}; // dateIso -> {slotKey: {name, company}}
+  var bookingsCache = {tanta:{}, mahalla:{}};
   var clinicWhatsApp = '201123411992'; // fallback default
 
   // ---- Firebase Realtime Database (works on any hosting, no Claude dependency) ----
@@ -644,45 +706,48 @@
     return res.json();
   }
 
-  document.getElementById('rv-week-title').textContent =
-    'المواعيد المتاحة — ' + ARABIC_MONTHS[week.m] + ' ' + week.y;
-
   async function loadBookings(){
     try {
       var data = await dbGet('bookings');
-      bookingsCache = data || {};
-    } catch(e){ bookingsCache = {}; }
+      bookingsCache = {tanta: (data && data.tanta) || {}, mahalla: (data && data.mahalla) || {}};
+    } catch(e){ bookingsCache = {tanta:{}, mahalla:{}}; }
   }
 
-  function countFilled(dateIso){
-    var b = bookingsCache[dateIso] || {};
+  function countFilled(clinic, dateIso){
+    var b = (bookingsCache[clinic] && bookingsCache[clinic][dateIso]) || {};
     return Object.keys(b).length;
   }
 
-  var BLOCKED_DOW = [1, 4]; // Monday, Thursday — reserved for the Mahalla Marhoum clinic
-  var BLOCKED_NOTE = 'مخصص لعيادة محلة مرحوم';
+  function selectClinic(clinic){
+    currentClinic = clinic;
+    SLOT_TIMES = buildSlotTimes(clinicSettings[clinic]);
+    week = getActiveWeekForClinic(CLINICS[clinic].allowedDow);
+    selectedDateIso = null;
+    selectedSlotKey = null;
+    document.getElementById('rv-clinic-tanta').classList.toggle('selected', clinic === 'tanta');
+    document.getElementById('rv-clinic-mahalla').classList.toggle('selected', clinic === 'mahalla');
+    document.getElementById('rv-week-title').textContent =
+      CLINICS[clinic].label + ' — المواعيد المتاحة (' + ARABIC_MONTHS[week.m] + ' ' + week.y + ')';
+    updatePolicyDisplay();
+    renderDays();
+    renderSlots();
+    document.getElementById('rv-form').classList.remove('active');
+  }
+
+  document.getElementById('rv-clinic-tanta').addEventListener('click', function(){ selectClinic('tanta'); });
+  document.getElementById('rv-clinic-mahalla').addEventListener('click', function(){ selectClinic('mahalla'); });
 
   function renderDays(){
     var wrap = document.getElementById('rv-days');
     wrap.innerHTML = '';
+    if (!currentClinic || !week){
+      wrap.innerHTML = '<p class="rv-section-note">اختر عيادة طنطا أو عيادة محلة مرحوم لعرض المواعيد المتاحة.</p>';
+      return;
+    }
     week.dates.forEach(function(d){
       var iso = isoDate(d);
-      var isBlocked = BLOCKED_DOW.indexOf(d.getDay()) !== -1;
+      var filled = countFilled(currentClinic, iso);
       var card = document.createElement('div');
-
-      if (isBlocked){
-        card.className = 'rv-day';
-        card.style.opacity = '0.55';
-        card.style.cursor = 'not-allowed';
-        card.innerHTML =
-          '<div class="rv-day-name">' + ARABIC_DAY_NAMES[d.getDay()] + '</div>' +
-          '<div class="rv-day-date">' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '</div>' +
-          '<div class="rv-day-meter" style="color:var(--taken); font-weight:600;">' + BLOCKED_NOTE + '</div>';
-        wrap.appendChild(card);
-        return;
-      }
-
-      var filled = countFilled(iso);
       card.className = 'rv-day' + (selectedDateIso === iso ? ' selected' : '');
       var dots = '';
       for (var i=0;i<SLOT_TIMES.length;i++){
@@ -708,10 +773,10 @@
 
   function renderSlots(){
     var box = document.getElementById('rv-slots');
-    if (!selectedDateIso){ box.classList.remove('active'); box.innerHTML=''; return; }
+    if (!selectedDateIso || !currentClinic){ box.classList.remove('active'); box.innerHTML=''; return; }
     box.classList.add('active');
     box.innerHTML = '';
-    var b = bookingsCache[selectedDateIso] || {};
+    var b = (bookingsCache[currentClinic] && bookingsCache[currentClinic][selectedDateIso]) || {};
     SLOT_TIMES.forEach(function(s){
       var taken = !!b[s.key];
       var row = document.createElement('div');
@@ -740,7 +805,7 @@
     var d = week.dates.find(function(d){ return isoDate(d) === selectedDateIso; });
     var slotLabel = SLOT_TIMES.find(function(s){ return s.key === selectedSlotKey; }).label;
     document.getElementById('rv-form-chosen').textContent =
-      'الموعد المختار: ' + ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '، ' + slotLabel;
+      CLINICS[currentClinic].label + ' — ' + ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '، ' + slotLabel;
     document.getElementById('rv-msg').textContent = '';
     form.scrollIntoView({behavior:'smooth', block:'nearest'});
   }
@@ -750,18 +815,17 @@
     var name = document.getElementById('rv-name').value.trim();
     var company = document.getElementById('rv-company').value.trim();
     var phone = document.getElementById('rv-phone').value.trim();
+    if (!currentClinic || !selectedDateIso || selectedSlotKey === null){
+      msg.textContent = 'من فضلك اختر العيادة واليوم والموعد أولاً.';
+      msg.className = 'rv-msg err';
+      return;
+    }
     if (!name || !company){
       msg.textContent = 'من فضلك أدخل الاسم واسم الشركة.';
       msg.className = 'rv-msg err';
       return;
     }
-    var selectedDateObj = week.dates.find(function(dd){ return isoDate(dd) === selectedDateIso; });
-    if (selectedDateObj && BLOCKED_DOW.indexOf(selectedDateObj.getDay()) !== -1){
-      msg.textContent = 'هذا اليوم غير متاح للحجز (' + BLOCKED_NOTE + ').';
-      msg.className = 'rv-msg err';
-      return;
-    }
-    var bookingPath = 'bookings/' + selectedDateIso + '/' + selectedSlotKey;
+    var bookingPath = 'bookings/' + currentClinic + '/' + selectedDateIso + '/' + selectedSlotKey;
     try{
       var phoneNormCheck = normalizePhone(phone);
       var nameKeyCheck = slugify(name + '|' + company);
@@ -785,8 +849,8 @@
         return;
       }
       await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString(), confirmed:false});
-      if (!bookingsCache[selectedDateIso]) bookingsCache[selectedDateIso] = {};
-      bookingsCache[selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone, confirmed:false};
+      if (!bookingsCache[currentClinic][selectedDateIso]) bookingsCache[currentClinic][selectedDateIso] = {};
+      bookingsCache[currentClinic][selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone, confirmed:false};
       renderDays();
       renderSlots();
       renderBookingsList();
@@ -795,6 +859,7 @@
       var slotLabel = SLOT_TIMES.find(function(s){ return s.key === selectedSlotKey; }).label;
       var waText = encodeURIComponent(
         'تأكيد حجز زيارة\n' +
+        CLINICS[currentClinic].label + '\n' +
         'الاسم: ' + name + '\n' +
         'الشركة: ' + company + '\n' +
         'اليوم: ' + ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '\n' +
@@ -802,16 +867,26 @@
       );
       var waLink = 'https://wa.me/' + clinicWhatsApp + '?text=' + waText;
       var confirmPath = bookingPath;
-      var confirmDateIso = selectedDateIso, confirmSlotKey = selectedSlotKey;
+      var confirmClinic = currentClinic, confirmDateIso = selectedDateIso, confirmSlotKey = selectedSlotKey;
       msg.innerHTML =
         '<b>الحجز محجوز مبدئياً ولن يُعتمد نهائياً إلا بعد إرسال رسالة التأكيد.</b><br>' +
         'اضغط الزرار وابعت الرسالة دلوقتي على واتساب:<br>' +
-        '<a class="rv-wa-btn" id="rv-wa-confirm-link" href="' + waLink + '" target="_blank" rel="noopener">إرسال تأكيد على واتساب الآن</a>';
+        '<a class="rv-wa-btn" id="rv-wa-confirm-link" href="' + waLink + '" target="_blank" rel="noopener">إرسال تأكيد على واتساب الآن</a>' +
+        '<div style="margin-top:16px; border:1px solid var(--brass); border-radius:8px; padding:12px 14px; background:#FEFCF8; text-align:right;">' +
+          '<div style="font-weight:700; color:var(--maroon); margin-bottom:8px; text-align:center;">تعليمات هامة لمندوبي شركات الأدوية</div>' +
+          '<div style="font-size:13px; line-height:1.9; color:var(--ink);">' +
+            '١. الزيارة بميعاد سابق ولا يوجد استثناءات.<br>' +
+            '٢. عدم الإطالة عند عرض مميزات المنتج، مع إمكانية ترك نشرة خاصة.<br>' +
+            '٣. عدم سؤال الطبيب إذا ما كان يقوم بكتابة الدواء من عدمه.<br>' +
+            '٤. عدم إرسال رسائل واتساب ترويجية.' +
+          '</div>' +
+          '<div style="font-size:12px; color:var(--ink-soft); margin-top:10px; text-align:left;">أ.د/ محمد البربري</div>' +
+        '</div>';
       msg.className = 'rv-msg ok';
       document.getElementById('rv-wa-confirm-link').addEventListener('click', function(){
         dbSet(confirmPath + '/confirmed', true).then(function(){
-          if (bookingsCache[confirmDateIso] && bookingsCache[confirmDateIso][confirmSlotKey]){
-            bookingsCache[confirmDateIso][confirmSlotKey].confirmed = true;
+          if (bookingsCache[confirmClinic] && bookingsCache[confirmClinic][confirmDateIso] && bookingsCache[confirmClinic][confirmDateIso][confirmSlotKey]){
+            bookingsCache[confirmClinic][confirmDateIso][confirmSlotKey].confirmed = true;
           }
           renderBookingsList();
         }).catch(function(){});
@@ -836,30 +911,37 @@
     var note = document.getElementById('rv-bookings-note');
     var list = document.getElementById('rv-bookings-list');
     var groups = [];
-    week.dates.forEach(function(d){
-      var iso = isoDate(d);
-      var b = bookingsCache[iso] || {};
-      var rows = [];
-      SLOT_TIMES.forEach(function(s){
-        var entry = b[s.key];
-        if (entry){
-          rows.push({
-            dateIso: iso,
-            slotKey: s.key,
-            time: s.label,
-            name: entry.name,
-            company: entry.company,
-            phone: entry.phone,
-            confirmed: !!entry.confirmed
+
+    ['tanta','mahalla'].forEach(function(clinic){
+      var clinicWeek = getActiveWeekForClinic(CLINICS[clinic].allowedDow);
+      var clinicSlots = buildSlotTimes(clinicSettings[clinic]);
+      clinicWeek.dates.forEach(function(d){
+        var iso = isoDate(d);
+        var b = (bookingsCache[clinic] && bookingsCache[clinic][iso]) || {};
+        var rows = [];
+        clinicSlots.forEach(function(s){
+          var entry = b[s.key];
+          if (entry){
+            rows.push({
+              clinic: clinic,
+              dateIso: iso,
+              slotKey: s.key,
+              time: s.label,
+              name: entry.name,
+              company: entry.company,
+              phone: entry.phone,
+              confirmed: !!entry.confirmed
+            });
+          }
+        });
+        if (rows.length){
+          groups.push({
+            clinicLabel: CLINICS[clinic].label,
+            dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
+            rows: rows
           });
         }
       });
-      if (rows.length){
-        groups.push({
-          dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
-          rows: rows
-        });
-      }
     });
 
     if (!groups.length){
@@ -872,10 +954,9 @@
 
     var html = '';
     groups.forEach(function(g, gi){
-      var groupId = 'rv-remind-group-' + gi;
       html += '<div class="rv-blist" style="margin-bottom:14px;">' +
         '<div class="rv-brow rv-bhead"><div class="rv-day-group" style="grid-column: 1 / -1;">' +
-          '<span>' + g.dateLabel + '</span>' +
+          '<span>' + g.clinicLabel + ' — ' + g.dateLabel + '</span>' +
           '<button class="rv-remind-btn" data-remind-group="' + gi + '" type="button">إرسال تذكير لكل مندوبي اليوم</button>' +
         '</div></div>';
       g.rows.forEach(function(r){
@@ -886,11 +967,11 @@
           reminderCell = '<span class="rv-remind-disabled">لا يوجد رقم هاتف</span>';
         }
         var deleteBtn = '<button class="rv-remind-btn" type="button" style="border-color:var(--taken);color:var(--taken);" ' +
-          'data-delete="1" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
+          'data-delete="1" data-clinic="' + escapeHtml(r.clinic) + '" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
           'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" ' +
           'data-datelabel="' + escapeHtml(g.dateLabel) + '" data-time="' + escapeHtml(r.time) + '">حذف</button>';
         var banBtn = '<button class="rv-remind-btn" type="button" style="border-color:#2b2b2b;color:#2b2b2b;" ' +
-          'data-ban="1" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
+          'data-ban="1" data-clinic="' + escapeHtml(r.clinic) + '" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
           'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" data-company="' + escapeHtml(r.company) + '">غياب (حظر)</button>';
         html += '<div class="rv-brow">' +
           '<div>' + r.time + '<br><span class="' + (r.confirmed ? 'rv-slot-status open' : 'rv-slot-status taken') + '" style="font-size:11px;">' + (r.confirmed ? '✓ مؤكد واتساب' : '⏳ لم يؤكد بعد') + '</span></div>' +
@@ -917,6 +998,7 @@
     // wire delete/cancel buttons
     list.querySelectorAll('[data-delete]').forEach(function(btn){
       btn.addEventListener('click', function(){
+        var clinic = btn.getAttribute('data-clinic');
         var name = btn.getAttribute('data-name');
         var dateLabel = btn.getAttribute('data-datelabel');
         var time = btn.getAttribute('data-time');
@@ -935,8 +1017,8 @@
             window.open('https://wa.me/' + normalizePhone(phone) + '?text=' + text, '_blank');
           }
 
-          dbDelete('bookings/' + dateIso + '/' + slotKey).then(function(){
-            if (bookingsCache[dateIso]) delete bookingsCache[dateIso][slotKey];
+          dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey).then(function(){
+            if (bookingsCache[clinic] && bookingsCache[clinic][dateIso]) delete bookingsCache[clinic][dateIso][slotKey];
             renderDays();
             renderBookingsList();
             if (selectedDateIso === dateIso) renderSlots();
@@ -950,6 +1032,7 @@
     // wire ban/no-show buttons
     list.querySelectorAll('[data-ban]').forEach(function(btn){
       btn.addEventListener('click', function(){
+        var clinic = btn.getAttribute('data-clinic');
         var name = btn.getAttribute('data-name');
         var company = btn.getAttribute('data-company');
         var phone = btn.getAttribute('data-phone');
@@ -960,11 +1043,11 @@
           var phoneNorm = normalizePhone(phone);
           var nameKey = slugify(name + '|' + company);
           var banRecord = {name:name, company:company, phone:phone, bannedAt: new Date().toISOString(), reason:'no-show'};
-          var writes = [dbSet('blacklist/name/' + nameKey, banRecord), dbDelete('bookings/' + dateIso + '/' + slotKey)];
+          var writes = [dbSet('blacklist/name/' + nameKey, banRecord), dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey)];
           if (phoneNorm) writes.push(dbSet('blacklist/phone/' + phoneNorm, banRecord));
 
           Promise.all(writes).then(function(){
-            if (bookingsCache[dateIso]) delete bookingsCache[dateIso][slotKey];
+            if (bookingsCache[clinic] && bookingsCache[clinic][dateIso]) delete bookingsCache[clinic][dateIso][slotKey];
             renderDays();
             renderBookingsList();
             if (selectedDateIso === dateIso) renderSlots();
@@ -1114,61 +1197,83 @@
     renderBookingsList();
   });
 
-  // ---- settings panel ----
-  var settingCountInput = document.getElementById('rv-setting-count');
-  var settingStartInput = document.getElementById('rv-setting-start');
-  var settingEndInput = document.getElementById('rv-setting-end');
+  // ---- settings panel (per clinic) ----
+  function wireClinicSettings(clinic){
+    var countInput = document.getElementById('rv-setting-count-' + clinic);
+    var startInput = document.getElementById('rv-setting-start-' + clinic);
+    var endInput = document.getElementById('rv-setting-end-' + clinic);
+    var msg = document.getElementById('rv-setting-msg-' + clinic);
+    var saveBtn = document.getElementById('rv-setting-save-' + clinic);
 
-  function applySettingsToInputs(){
-    settingCountInput.value = settings.maxPerDay;
-    settingStartInput.value = settings.startTime;
-    settingEndInput.value = settings.endTime;
-    updatePolicyDisplay();
+    function applyToInputs(){
+      countInput.value = clinicSettings[clinic].maxPerDay;
+      startInput.value = clinicSettings[clinic].startTime;
+      endInput.value = clinicSettings[clinic].endTime;
+    }
+    applyToInputs();
+
+    saveBtn.addEventListener('click', async function(){
+      var count = parseInt(countInput.value, 10);
+      var start = startInput.value;
+      var end = endInput.value;
+      if (!count || count < 1 || !start || !end || start >= end){
+        msg.textContent = 'برجاء إدخال قيم صحيحة (عدد صحيح، ووقت بداية أقل من وقت النهاية).';
+        msg.className = 'rv-msg err';
+        return;
+      }
+      clinicSettings[clinic].maxPerDay = count;
+      clinicSettings[clinic].startTime = start;
+      clinicSettings[clinic].endTime = end;
+      try{
+        await dbSet('config/settings_' + clinic, clinicSettings[clinic]);
+        if (currentClinic === clinic){
+          SLOT_TIMES = buildSlotTimes(clinicSettings[clinic]);
+          updatePolicyDisplay();
+          selectedDateIso = null;
+          selectedSlotKey = null;
+          renderDays();
+          renderSlots();
+          document.getElementById('rv-form').classList.remove('active');
+        }
+        renderBookingsList();
+        msg.textContent = 'تم حفظ الإعدادات وتحديث الجدول.';
+        msg.className = 'rv-msg ok';
+      } catch(e){
+        msg.textContent = 'تعذر الحفظ، حاول مرة أخرى.';
+        msg.className = 'rv-msg err';
+      }
+    });
+
+    return applyToInputs;
   }
+
+  var applyTantaInputs = wireClinicSettings('tanta');
+  var applyMahallaInputs = wireClinicSettings('mahalla');
 
   async function loadSettings(){
     try{
-      var v = await dbGet('config/settings');
+      var v = await dbGet('config/settings_tanta');
       if (v){
-        if (v.maxPerDay) settings.maxPerDay = v.maxPerDay;
-        if (v.startTime) settings.startTime = v.startTime;
-        if (v.endTime) settings.endTime = v.endTime;
+        if (v.maxPerDay) clinicSettings.tanta.maxPerDay = v.maxPerDay;
+        if (v.startTime) clinicSettings.tanta.startTime = v.startTime;
+        if (v.endTime) clinicSettings.tanta.endTime = v.endTime;
       }
     } catch(e){}
-    SLOT_TIMES = buildSlotTimes();
-    applySettingsToInputs();
-  }
-
-  document.getElementById('rv-setting-save').addEventListener('click', async function(){
-    var msg = document.getElementById('rv-setting-msg');
-    var count = parseInt(settingCountInput.value, 10);
-    var start = settingStartInput.value;
-    var end = settingEndInput.value;
-    if (!count || count < 1 || !start || !end || start >= end){
-      msg.textContent = 'برجاء إدخال قيم صحيحة (عدد صحيح، ووقت بداية أقل من وقت النهاية).';
-      msg.className = 'rv-msg err';
-      return;
-    }
-    settings.maxPerDay = count;
-    settings.startTime = start;
-    settings.endTime = end;
     try{
-      await dbSet('config/settings', settings);
-      SLOT_TIMES = buildSlotTimes();
+      var v2 = await dbGet('config/settings_mahalla');
+      if (v2){
+        if (v2.maxPerDay) clinicSettings.mahalla.maxPerDay = v2.maxPerDay;
+        if (v2.startTime) clinicSettings.mahalla.startTime = v2.startTime;
+        if (v2.endTime) clinicSettings.mahalla.endTime = v2.endTime;
+      }
+    } catch(e){}
+    applyTantaInputs();
+    applyMahallaInputs();
+    if (currentClinic){
+      SLOT_TIMES = buildSlotTimes(clinicSettings[currentClinic]);
       updatePolicyDisplay();
-      selectedDateIso = null;
-      selectedSlotKey = null;
-      renderDays();
-      renderSlots();
-      renderBookingsList();
-      document.getElementById('rv-form').classList.remove('active');
-      msg.textContent = 'تم حفظ الإعدادات وتحديث الجدول.';
-      msg.className = 'rv-msg ok';
-    } catch(e){
-      msg.textContent = 'تعذر الحفظ، حاول مرة أخرى.';
-      msg.className = 'rv-msg err';
     }
-  });
+  }
 
   // ---- print door sheet ----
   document.getElementById('rv-print-btn').addEventListener('click', function(){
@@ -1207,21 +1312,27 @@
     resultsBox.innerHTML = '<p class="rv-section-note">جارٍ البحث…</p>';
     await loadBookings();
     var matches = [];
-    week.dates.forEach(function(d){
-      var iso = isoDate(d);
-      var b = bookingsCache[iso] || {};
-      SLOT_TIMES.forEach(function(s){
-        var entry = b[s.key];
-        if (entry && normalizePhone(entry.phone) === phoneNorm){
-          matches.push({
-            dateIso: iso,
-            slotKey: s.key,
-            dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
-            time: s.label,
-            name: entry.name,
-            company: entry.company
-          });
-        }
+    ['tanta','mahalla'].forEach(function(clinic){
+      var clinicWeek = getActiveWeekForClinic(CLINICS[clinic].allowedDow);
+      var clinicSlots = buildSlotTimes(clinicSettings[clinic]);
+      clinicWeek.dates.forEach(function(d){
+        var iso = isoDate(d);
+        var b = (bookingsCache[clinic] && bookingsCache[clinic][iso]) || {};
+        clinicSlots.forEach(function(s){
+          var entry = b[s.key];
+          if (entry && normalizePhone(entry.phone) === phoneNorm){
+            matches.push({
+              clinic: clinic,
+              clinicLabel: CLINICS[clinic].label,
+              dateIso: iso,
+              slotKey: s.key,
+              dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
+              time: s.label,
+              name: entry.name,
+              company: entry.company
+            });
+          }
+        });
       });
     });
     if (!matches.length){
@@ -1231,7 +1342,7 @@
     var html = '';
     matches.forEach(function(m, idx){
       html += '<div class="rv-slot-row">' +
-        '<div><div class="rv-slot-time">' + m.dateLabel + '، ' + m.time + '</div>' +
+        '<div><div class="rv-slot-time">' + m.clinicLabel + ' — ' + m.dateLabel + '، ' + m.time + '</div>' +
         '<div class="rv-slot-status open">' + escapeHtml(m.name) + ' — ' + escapeHtml(m.company) + '</div></div>' +
         '<button class="rv-slot-pick" data-self-cancel="' + idx + '" type="button">إلغاء الحجز</button>' +
         '</div>';
@@ -1241,8 +1352,8 @@
       btn.addEventListener('click', function(){
         var m = matches[parseInt(btn.getAttribute('data-self-cancel'), 10)];
         showConfirm('هل تريد إلغاء حجزك يوم ' + m.dateLabel + '، ' + m.time + '؟', function(){
-          dbDelete('bookings/' + m.dateIso + '/' + m.slotKey).then(function(){
-            if (bookingsCache[m.dateIso]) delete bookingsCache[m.dateIso][m.slotKey];
+          dbDelete('bookings/' + m.clinic + '/' + m.dateIso + '/' + m.slotKey).then(function(){
+            if (bookingsCache[m.clinic] && bookingsCache[m.clinic][m.dateIso]) delete bookingsCache[m.clinic][m.dateIso][m.slotKey];
             renderDays();
             renderBookingsList();
             if (selectedDateIso === m.dateIso) renderSlots();
