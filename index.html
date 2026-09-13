@@ -733,7 +733,11 @@
     return base;
   }
   async function dbGet(path){
-    var res = await fetch(await dbPath(path));
+    // cache:'no-store' + a timestamp stop the browser from ever reusing an
+    // old cached response for the same URL (this was hiding real bookings).
+    var url = await dbPath(path);
+    url += (url.indexOf('?') === -1 ? '?' : '&') + '_ts=' + Date.now();
+    var res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('db read failed');
     return res.json();
   }
