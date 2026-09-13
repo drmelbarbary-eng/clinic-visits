@@ -559,7 +559,7 @@
 
   function applyAdminVisibility(){
     document.querySelectorAll('.rv-admin-only').forEach(function(el){
-      el.style.display = adminUnlocked ? '' : 'none';
+      el.style.display = adminUnlocked ? 'block' : 'none';
     });
     var btn = document.getElementById('rv-admin-toggle');
     if (btn) btn.textContent = adminUnlocked ? 'إخفاء لوحة التحكم' : 'دخول لوحة التحكم';
