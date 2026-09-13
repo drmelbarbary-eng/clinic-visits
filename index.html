@@ -475,15 +475,15 @@
         <h3 class="rv-section-title" style="font-size:17px;">تغيير كلمة مرور لوحة التحكم</h3>
         <div class="rv-field">
           <label>كلمة المرور الحالية</label>
-          <input type="password" id="rv-pin-current" inputmode="numeric" />
+          <input type="password" id="rv-pin-current" />
         </div>
         <div class="rv-field">
-          <label>كلمة المرور الجديدة</label>
-          <input type="password" id="rv-pin-new" inputmode="numeric" />
+          <label>كلمة المرور الجديدة (٦ حروف/أرقام على الأقل)</label>
+          <input type="password" id="rv-pin-new" />
         </div>
         <div class="rv-field">
           <label>تأكيد كلمة المرور الجديدة</label>
-          <input type="password" id="rv-pin-confirm" inputmode="numeric" />
+          <input type="password" id="rv-pin-confirm" />
         </div>
         <button class="rv-submit" id="rv-pin-save">حفظ كلمة المرور الجديدة</button>
         <div class="rv-msg" id="rv-pin-msg"></div>
@@ -533,15 +533,30 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- ===== Firebase Auth (real login, replaces the old client-side PIN) =====
+     Fill in the 5 values below from: Firebase Console → Project settings (gear icon)
+     → General tab → "Your apps" → Web app → SDK setup and configuration.
+     ADMIN_EMAIL / ADMIN_PASSWORD are the login you create in:
+     Firebase Console → Authentication → Sign-in method → enable "Email/Password"
+     → Authentication → Users → Add user. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script>
+  var ADMIN_EMAIL = "drm.elbarbary@gmail.com"; // the login email you create in Firebase Authentication
+  var firebaseConfig = {
+    apiKey: "AIzaSyCqWioIdYxJurhrhBBtAHw7PFg1Ht1mOkc",
+    authDomain: "clinic-visits.firebaseapp.com",
+    databaseURL: "https://clinic-visits-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "clinic-visits",
+    appId: "1:343598260234:web:56da77823bb23d004afff3"
+  };
+  firebase.initializeApp(firebaseConfig);
+</script>
 <script>
 (function(){
-  window.RV_ADMIN_PIN_DEFAULT = '1397';
   var adminUnlocked = false;
-  try { adminUnlocked = sessionStorage.getItem('rv_admin_unlocked') === 'yes'; } catch(e){ adminUnlocked = false; }
 
-  function persistUnlocked(v){
-    try { sessionStorage.setItem('rv_admin_unlocked', v ? 'yes' : 'no'); } catch(e){ /* storage blocked, ignore */ }
-  }
   function applyAdminVisibility(){
     document.querySelectorAll('.rv-admin-only').forEach(function(el){
       el.style.display = adminUnlocked ? '' : 'none';
@@ -564,24 +579,28 @@
     modal.style.display = 'none';
   }
   function attemptUnlock(){
-    var activePin = window.RV_ADMIN_PIN || window.RV_ADMIN_PIN_DEFAULT;
-    if (pinInput.value === activePin){
-      adminUnlocked = true;
-      persistUnlocked(true);
-      applyAdminVisibility();
-      hideModal();
-    } else {
-      pinErr.textContent = 'كلمة المرور غير صحيحة.';
-      pinInput.value = '';
-      pinInput.focus();
-    }
+    pinErr.textContent = '...جارٍ التحقق';
+    firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pinInput.value)
+      .then(function(){
+        hideModal();
+      })
+      .catch(function(){
+        pinErr.textContent = 'كلمة المرور غير صحيحة.';
+        pinInput.value = '';
+        pinInput.focus();
+      });
   }
+
+  // adminUnlocked now reflects the real, server-verified Firebase login —
+  // not a value anyone can fake by editing the page or its storage.
+  firebase.auth().onAuthStateChanged(function(user){
+    adminUnlocked = !!user;
+    applyAdminVisibility();
+  });
 
   document.getElementById('rv-admin-toggle').addEventListener('click', function(){
     if (adminUnlocked){
-      adminUnlocked = false;
-      persistUnlocked(false);
-      applyAdminVisibility();
+      firebase.auth().signOut();
       return;
     }
     showModal();
@@ -701,16 +720,25 @@
   // ---- Firebase Realtime Database (works on any hosting, no Claude dependency) ----
   var FIREBASE_DB_URL = 'https://clinic-visits-default-rtdb.europe-west1.firebasedatabase.app';
 
-  function dbPath(path){
-    return FIREBASE_DB_URL.replace(/\/$/, '') + '/' + path + '.json';
+  // Appends the signed-in admin's Firebase ID token so the security rules can
+  // tell a real logged-in admin apart from an anonymous visitor. Booking
+  // creation still works with no token, since that path stays open to anyone.
+  async function dbPath(path){
+    var base = FIREBASE_DB_URL.replace(/\/$/, '') + '/' + path + '.json';
+    var user = firebase.auth().currentUser;
+    if (user){
+      var token = await user.getIdToken();
+      base += '?auth=' + encodeURIComponent(token);
+    }
+    return base;
   }
   async function dbGet(path){
-    var res = await fetch(dbPath(path));
+    var res = await fetch(await dbPath(path));
     if (!res.ok) throw new Error('db read failed');
     return res.json();
   }
   async function dbSet(path, value){
-    var res = await fetch(dbPath(path), {
+    var res = await fetch(await dbPath(path), {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(value)
@@ -720,7 +748,7 @@
   }
 
   async function dbDelete(path){
-    var res = await fetch(dbPath(path), { method: 'DELETE' });
+    var res = await fetch(await dbPath(path), { method: 'DELETE' });
     if (!res.ok) throw new Error('db delete failed');
     return res.json();
   }
@@ -1215,28 +1243,16 @@
     try { document.execCommand('copy'); } catch(e){}
   });
 
-  async function loadAdminPin(){
-    try{
-      var v = await dbGet('config/admin_pin');
-      if (v) window.RV_ADMIN_PIN = v;
-    } catch(e){}
-  }
-  loadAdminPin();
-
+  // Password changes now go through real Firebase Authentication instead of
+  // a value stored in the open database.
   document.getElementById('rv-pin-save').addEventListener('click', async function(){
     var msg = document.getElementById('rv-pin-msg');
     var current = document.getElementById('rv-pin-current').value;
     var next = document.getElementById('rv-pin-new').value;
     var confirmNext = document.getElementById('rv-pin-confirm').value;
-    var activePin = window.RV_ADMIN_PIN || window.RV_ADMIN_PIN_DEFAULT;
 
-    if (current !== activePin){
-      msg.textContent = 'كلمة المرور الحالية غير صحيحة.';
-      msg.className = 'rv-msg err';
-      return;
-    }
-    if (!next || next.length < 4){
-      msg.textContent = 'كلمة المرور الجديدة يجب أن تكون ٤ أرقام على الأقل.';
+    if (!next || next.length < 6){
+      msg.textContent = 'كلمة المرور الجديدة يجب أن تكون ٦ حروف/أرقام على الأقل.';
       msg.className = 'rv-msg err';
       return;
     }
@@ -1246,15 +1262,17 @@
       return;
     }
     try{
-      await dbSet('config/admin_pin', next);
-      window.RV_ADMIN_PIN = next;
+      var user = firebase.auth().currentUser;
+      var cred = firebase.auth.EmailAuthProvider.credential(ADMIN_EMAIL, current);
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(next);
       document.getElementById('rv-pin-current').value = '';
       document.getElementById('rv-pin-new').value = '';
       document.getElementById('rv-pin-confirm').value = '';
       msg.textContent = 'تم تغيير كلمة المرور بنجاح.';
       msg.className = 'rv-msg ok';
     } catch(e){
-      msg.textContent = 'تعذر الحفظ، حاول مرة أخرى.';
+      msg.textContent = 'كلمة المرور الحالية غير صحيحة، أو حدث خطأ. حاول مرة أخرى.';
       msg.className = 'rv-msg err';
     }
   });
