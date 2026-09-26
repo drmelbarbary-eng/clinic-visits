@@ -288,6 +288,34 @@
     color: var(--maroon);
   }
 
+  .rv-month-nav{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 12px;
+    margin: 0 0 4px;
+  }
+  .rv-month-nav .rv-section-title{ margin:0; text-align:center; }
+  .rv-month-btn{
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--teal-deep);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .rv-month-btn:disabled{
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
   @media print {
     body *{ visibility: hidden; }
     #rv-print-sheet, #rv-print-sheet *{ visibility: visible; }
@@ -367,10 +395,14 @@
         <div class="rv-policy-item"><span class="num" id="rv-policy-time-num">٥–٧</span><span class="lbl">مساءً</span></div>
         <div class="rv-policy-item"><span class="num" id="rv-policy-count-num">٢</span><span class="lbl" id="rv-policy-count-lbl">زيارتان كحد أقصى في اليوم الواحد</span></div>
       </div>
-      <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد المواعيد…</h2>
+      <div class="rv-month-nav" id="rv-month-nav">
+        <button type="button" class="rv-month-btn" id="rv-month-prev" aria-label="الشهر السابق">‹</button>
+        <h2 class="rv-section-title" id="rv-week-title">جارٍ تحديد المواعيد…</h2>
+        <button type="button" class="rv-month-btn" id="rv-month-next" aria-label="الشهر التالي">›</button>
+      </div>
     </div>
 
-    <p class="rv-section-note">اختر مكان العيادة أولاً، ثم اليوم المناسب للحجز.</p>
+    <p class="rv-section-note">اختر مكان العيادة أولاً، ثم اليوم المناسب للحجز. يمكنك التنقل بين الشهور لحجز أي ميعاد خلال السنة القادمة.</p>
 
     <div style="display:flex; gap:10px; margin-bottom:18px;">
       <button type="button" class="rv-clinic-chip" data-clinic="tanta" id="rv-clinic-tanta">عيادة طنطا</button>
@@ -699,18 +731,71 @@
     return dates;
   }
 
+  // Reps can book anywhere in the coming year, not just the current month:
+  // month navigation is clamped between the current month and 11 months
+  // ahead (a rolling 12-month window) so they always land on today's month
+  // first but can page forward (or back, once they've moved) to any date
+  // in that year — including after the currently-shown days fill up.
+  function monthIndex(y, m){ return y*12 + m; }
+  function todayMonthIndex(){
+    var today = new Date();
+    return monthIndex(today.getFullYear(), today.getMonth());
+  }
+  function clampMonth(y, m){
+    var minIdx = todayMonthIndex();
+    var maxIdx = minIdx + 11;
+    var idx = monthIndex(y, m);
+    if (idx < minIdx) idx = minIdx;
+    if (idx > maxIdx) idx = maxIdx;
+    return {y: Math.floor(idx/12), m: ((idx%12)+12)%12};
+  }
+
   function getActiveWeekForClinic(allowedDow){
     var today = new Date();
     today.setHours(0,0,0,0);
     var y = today.getFullYear(), m = today.getMonth();
     var dates = computeMonthDatesForClinic(y, m, allowedDow).filter(function(d){ return d >= today; });
-    if (!dates.length){
+    while (!dates.length && monthIndex(y, m) < todayMonthIndex() + 11){
       var next = new Date(y, m+1, 1);
       y = next.getFullYear(); m = next.getMonth();
       dates = computeMonthDatesForClinic(y, m, allowedDow);
     }
     return {dates: dates, y:y, m:m};
   }
+
+  function changeMonth(delta){
+    if (!currentClinic || !week) return;
+    var c = clampMonth(week.y, week.m + delta);
+    var today = new Date(); today.setHours(0,0,0,0);
+    var dates = computeMonthDatesForClinic(c.y, c.m, CLINICS[currentClinic].allowedDow)
+      .filter(function(d){ return d >= today; });
+    week = {dates: dates, y: c.y, m: c.m};
+    selectedDateIso = null;
+    selectedSlotKey = null;
+    document.getElementById('rv-week-title').textContent =
+      CLINICS[currentClinic].label + ' — المواعيد المتاحة (' + ARABIC_MONTHS[week.m] + ' ' + week.y + ')';
+    updateMonthNav();
+    renderDays();
+    renderSlots();
+    document.getElementById('rv-form').classList.remove('active');
+  }
+
+  function updateMonthNav(){
+    var prevBtn = document.getElementById('rv-month-prev');
+    var nextBtn = document.getElementById('rv-month-next');
+    if (!prevBtn || !nextBtn) return;
+    if (!currentClinic || !week){
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      return;
+    }
+    var idx = monthIndex(week.y, week.m);
+    prevBtn.disabled = idx <= todayMonthIndex();
+    nextBtn.disabled = idx >= todayMonthIndex() + 11;
+  }
+
+  document.getElementById('rv-month-prev').addEventListener('click', function(){ changeMonth(-1); });
+  document.getElementById('rv-month-next').addEventListener('click', function(){ changeMonth(1); });
 
   var selectedDateIso = null;
   var selectedSlotKey = null;
@@ -780,6 +865,7 @@
     document.getElementById('rv-week-title').textContent =
       CLINICS[clinic].label + ' — المواعيد المتاحة (' + ARABIC_MONTHS[week.m] + ' ' + week.y + ')';
     updatePolicyDisplay();
+    updateMonthNav();
     renderDays();
     renderSlots();
     document.getElementById('rv-form').classList.remove('active');
