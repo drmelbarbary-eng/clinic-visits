@@ -842,11 +842,60 @@
     return res.json();
   }
 
+  // Booking details (names, phones) are readable only by the signed-in
+  // admin. Visitors instead read the public 'taken' index, which holds only
+  // clinic/date/slot = true and no personal data, so reps can still see
+  // which slots are full (the day meter and coloured dots).
+  function takenPath(clinic, dateIso, slotKey){
+    return 'taken/' + clinic + '/' + dateIso + '/' + slotKey;
+  }
   async function loadBookings(){
+    if (firebase.auth().currentUser){
+      try {
+        var data = await dbGet('bookings');
+        bookingsCache = {tanta: (data && data.tanta) || {}, mahalla: (data && data.mahalla) || {}};
+        syncTakenIndex();
+        return;
+      } catch(e){ /* fall through to the public index */ }
+    }
     try {
-      var data = await dbGet('bookings');
-      bookingsCache = {tanta: (data && data.tanta) || {}, mahalla: (data && data.mahalla) || {}};
+      var t = await dbGet('taken');
+      var cache = {tanta:{}, mahalla:{}};
+      ['tanta','mahalla'].forEach(function(clinic){
+        var byDate = (t && t[clinic]) || {};
+        Object.keys(byDate).forEach(function(iso){
+          cache[clinic][iso] = {};
+          Object.keys(byDate[iso] || {}).forEach(function(k){
+            if (byDate[iso][k]) cache[clinic][iso][k] = {name:'', company:'', phone:'', confirmed:false, hidden:true};
+          });
+        });
+      });
+      bookingsCache = cache;
     } catch(e){ bookingsCache = {tanta:{}, mahalla:{}}; }
+  }
+  // Admin only: make the public index match the real bookings (fills it in
+  // for bookings made before the index existed and clears stale entries).
+  var takenSyncDone = false;
+  async function syncTakenIndex(){
+    if (takenSyncDone) return;
+    takenSyncDone = true;
+    try {
+      var todayIso = isoDate(new Date());
+      var idx = {tanta:{}, mahalla:{}};
+      ['tanta','mahalla'].forEach(function(clinic){
+        var byDate = bookingsCache[clinic] || {};
+        Object.keys(byDate).forEach(function(iso){
+          if (iso < todayIso) return;
+          Object.keys(byDate[iso] || {}).forEach(function(k){
+            if (byDate[iso][k]){
+              if (!idx[clinic][iso]) idx[clinic][iso] = {};
+              idx[clinic][iso][k] = true;
+            }
+          });
+        });
+      });
+      await dbSet('taken', idx);
+    } catch(e){ takenSyncDone = false; }
   }
 
   function countFilled(clinic, dateIso){
@@ -983,6 +1032,9 @@
 
       var existing = null;
       try { existing = await dbGet(bookingPath); } catch(e){ existing = null; }
+      if (!existing){
+        try { existing = await dbGet(takenPath(currentClinic, selectedDateIso, selectedSlotKey)); } catch(e){ existing = null; }
+      }
       if (existing){
         msg.textContent = 'عذراً، هذا الموعد تم حجزه للتو من مندوب آخر. برجاء اختيار موعد آخر.';
         msg.className = 'rv-msg err';
@@ -992,6 +1044,7 @@
         return;
       }
       await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString(), confirmed:false});
+      try { await dbSet(takenPath(currentClinic, selectedDateIso, selectedSlotKey), true); } catch(e){ /* index is best-effort */ }
       if (!bookingsCache[currentClinic][selectedDateIso]) bookingsCache[currentClinic][selectedDateIso] = {};
       bookingsCache[currentClinic][selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone, confirmed:false};
       renderDays();
@@ -1079,6 +1132,7 @@
         var seen = {};
         clinicSlots.forEach(function(s){
           var entry = b[s.key];
+          if (entry && entry.hidden){ seen[s.key] = true; return; }
           if (entry){
             seen[s.key] = true;
             rows.push({clinic: clinic, dateIso: iso, slotKey: s.key, time: s.label,
@@ -1087,7 +1141,7 @@
         });
         // bookings whose slot no longer matches the current clinic hours
         Object.keys(b).forEach(function(k){
-          if (seen[k] || !b[k]) return;
+          if (seen[k] || !b[k] || b[k].hidden) return;
           rows.push({clinic: clinic, dateIso: iso, slotKey: k, time: String(k),
             name: b[k].name, company: b[k].company, phone: b[k].phone, confirmed: !!b[k].confirmed});
         });
@@ -1181,7 +1235,7 @@
             window.open('https://wa.me/' + waNumber(phone) + '?text=' + text, '_blank');
           }
 
-          dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey).then(function(){
+          Promise.all([dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey), dbDelete(takenPath(clinic, dateIso, slotKey)).catch(function(){})]).then(function(){
             if (bookingsCache[clinic] && bookingsCache[clinic][dateIso]) delete bookingsCache[clinic][dateIso][slotKey];
             renderDays();
             renderBookingsList();
@@ -1208,7 +1262,7 @@
           var nameKey = slugify(name + '|' + company);
           var banUntil = new Date(Date.now() + 60*24*60*60*1000).toISOString();
           var banRecord = {name:name, company:company, phone:phone, bannedAt: new Date().toISOString(), banUntil: banUntil, reason:'no-show'};
-          var writes = [dbSet('blacklist/name/' + nameKey, banRecord), dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey)];
+          var writes = [dbSet('blacklist/name/' + nameKey, banRecord), dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey), dbDelete(takenPath(clinic, dateIso, slotKey)).catch(function(){})];
           if (phoneNorm) writes.push(dbSet('blacklist/phone/' + phoneNorm, banRecord));
 
           Promise.all(writes).then(function(){
@@ -1395,6 +1449,15 @@
     renderDays();
     renderBookingsList();
   });
+  // The login is restored after page load, so reload once it is known:
+  // the admin gets full booking details, visitors the public index.
+  firebase.auth().onAuthStateChanged(function(){
+    loadBookings().then(function(){
+      renderDays();
+      renderSlots();
+      renderBookingsList();
+    });
+  });
 
   // ---- settings panel (per clinic) ----
   function wireClinicSettings(clinic){
@@ -1551,7 +1614,7 @@
       btn.addEventListener('click', function(){
         var m = matches[parseInt(btn.getAttribute('data-self-cancel'), 10)];
         showConfirm('هل تريد إلغاء حجزك يوم ' + m.dateLabel + '، ' + m.time + '؟', function(){
-          dbDelete('bookings/' + m.clinic + '/' + m.dateIso + '/' + m.slotKey).then(function(){
+          Promise.all([dbDelete('bookings/' + m.clinic + '/' + m.dateIso + '/' + m.slotKey), dbDelete(takenPath(m.clinic, m.dateIso, m.slotKey)).catch(function(){})]).then(function(){
             if (bookingsCache[m.clinic] && bookingsCache[m.clinic][m.dateIso]) delete bookingsCache[m.clinic][m.dateIso][m.slotKey];
             renderDays();
             renderBookingsList();
