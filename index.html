@@ -522,7 +522,7 @@
       </div>
 
       <div style="margin-top:30px;">
-        <h3 class="rv-section-title">المندوبون المسجلون هذا الأسبوع</h3>
+        <h3 class="rv-section-title">الحجوزات القادمة (كل الشهور)</h3>
         <p class="rv-section-note" id="rv-bookings-note">لا يوجد حجوزات بعد.</p>
         <div id="rv-bookings-list"></div>
       </div>
@@ -1047,6 +1047,15 @@
   function normalizePhone(v){
     return (v || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
   }
+  // wa.me needs the full international number. Reps type local Egyptian
+  // numbers (01xxxxxxxxx), which normalizePhone turns into 1xxxxxxxxx, so
+  // the 20 country code is added back here; numbers that already carry it
+  // (20xxxxxxxxxx / +20 / 0020) are left as they are.
+  function waNumber(v){
+    var n = normalizePhone(v);
+    if (/^1[0125]\d{8}$/.test(n)) n = '20' + n;
+    return n;
+  }
   function slugify(v){
     return (v || '').trim().toLowerCase().replace(/\s+/g, '');
   }
@@ -1056,37 +1065,44 @@
     var list = document.getElementById('rv-bookings-list');
     var groups = [];
 
+    // All upcoming bookings in any month (reps can now book up to a year
+    // ahead), so the admin can see and cancel a booking whatever its month.
+    var todayIso = isoDate(new Date());
     ['tanta','mahalla'].forEach(function(clinic){
-      var clinicWeek = getActiveWeekForClinic(CLINICS[clinic].allowedDow);
       var clinicSlots = buildSlotTimes(clinicSettings[clinic]);
-      clinicWeek.dates.forEach(function(d){
-        var iso = isoDate(d);
-        var b = (bookingsCache[clinic] && bookingsCache[clinic][iso]) || {};
+      var byDate = bookingsCache[clinic] || {};
+      Object.keys(byDate).filter(function(iso){ return iso >= todayIso; }).sort().forEach(function(iso){
+        var b = byDate[iso] || {};
+        var parts = iso.split('-');
+        var d = new Date(+parts[0], +parts[1]-1, +parts[2]);
         var rows = [];
+        var seen = {};
         clinicSlots.forEach(function(s){
           var entry = b[s.key];
           if (entry){
-            rows.push({
-              clinic: clinic,
-              dateIso: iso,
-              slotKey: s.key,
-              time: s.label,
-              name: entry.name,
-              company: entry.company,
-              phone: entry.phone,
-              confirmed: !!entry.confirmed
-            });
+            seen[s.key] = true;
+            rows.push({clinic: clinic, dateIso: iso, slotKey: s.key, time: s.label,
+              name: entry.name, company: entry.company, phone: entry.phone, confirmed: !!entry.confirmed});
           }
+        });
+        // bookings whose slot no longer matches the current clinic hours
+        Object.keys(b).forEach(function(k){
+          if (seen[k] || !b[k]) return;
+          rows.push({clinic: clinic, dateIso: iso, slotKey: k, time: String(k),
+            name: b[k].name, company: b[k].company, phone: b[k].phone, confirmed: !!b[k].confirmed});
         });
         if (rows.length){
           groups.push({
             clinicLabel: CLINICS[clinic].label,
-            dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
+            clinicKey: clinic,
+            dateIso: iso,
+            dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + ' ' + d.getFullYear(),
             rows: rows
           });
         }
       });
     });
+    groups.sort(function(a, b){ return a.dateIso < b.dateIso ? -1 : a.dateIso > b.dateIso ? 1 : (a.clinicKey < b.clinicKey ? -1 : 1); });
 
     if (!groups.length){
       note.textContent = 'لا يوجد حجوزات بعد.';
@@ -1113,7 +1129,8 @@
         var deleteBtn = '<button class="rv-remind-btn" type="button" style="border-color:var(--taken);color:var(--taken);" ' +
           'data-delete="1" data-clinic="' + escapeHtml(r.clinic) + '" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
           'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" ' +
-          'data-datelabel="' + escapeHtml(g.dateLabel) + '" data-time="' + escapeHtml(r.time) + '">حذف</button>';
+          'data-cliniclabel="' + escapeHtml(g.clinicLabel) + '" ' +
+          'data-datelabel="' + escapeHtml(g.dateLabel) + '" data-time="' + escapeHtml(r.time) + '">' + (r.phone ? 'إلغاء + واتساب' : 'إلغاء الحجز') + '</button>';
         var banBtn = '<button class="rv-remind-btn" type="button" style="border-color:#2b2b2b;color:#2b2b2b;" ' +
           'data-ban="1" data-clinic="' + escapeHtml(r.clinic) + '" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
           'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" data-company="' + escapeHtml(r.company) + '">غياب (حظر)</button>';
@@ -1129,7 +1146,7 @@
 
     // wire per-rep reminder links
     list.querySelectorAll('[data-remind-single]').forEach(function(a){
-      var phone = normalizePhone(a.getAttribute('data-phone'));
+      var phone = waNumber(a.getAttribute('data-phone'));
       var text = encodeURIComponent(
         'تذكير بموعد زيارتكم بالعيادة\n' +
         'اليوم: ' + a.getAttribute('data-date') + '\n' +
@@ -1149,16 +1166,19 @@
         var phone = btn.getAttribute('data-phone');
         var dateIso = btn.getAttribute('data-date-iso');
         var slotKey = btn.getAttribute('data-slot');
+        var clinicLabel = btn.getAttribute('data-cliniclabel') || '';
 
-        showConfirm('هل تريد إلغاء حجز ' + name + ' يوم ' + dateLabel + '، ' + time + '؟', function(){
+        showConfirm('هل تريد إلغاء حجز ' + name + ' (' + clinicLabel + ') يوم ' + dateLabel + '، ' + time + '؟' +
+          (phone ? '\nسيتم فتح واتساب برسالة إلغاء جاهزة لإرسالها لرقم المندوب.' : '\nلا يوجد رقم هاتف مسجل، لن تُرسل رسالة واتساب.'), function(){
           if (phone){
             var text = encodeURIComponent(
-              'نأسف، تم إلغاء موعد زيارتكم بالعيادة\n' +
+              'السيد/ ' + name + '\n' +
+              'نأسف، تم إلغاء موعد زيارتكم ب' + clinicLabel + '\n' +
               'اليوم: ' + dateLabel + '\n' +
               'الموعد: ' + time + '\n' +
               'برجاء التواصل لحجز موعد آخر عند توفره.'
             );
-            window.open('https://wa.me/' + normalizePhone(phone) + '?text=' + text, '_blank');
+            window.open('https://wa.me/' + waNumber(phone) + '?text=' + text, '_blank');
           }
 
           dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey).then(function(){
@@ -1222,7 +1242,7 @@
             'نتشرف بحضوركم.'
           );
           setTimeout(function(){
-            window.open('https://wa.me/' + normalizePhone(r.phone) + '?text=' + text, '_blank');
+            window.open('https://wa.me/' + waNumber(r.phone) + '?text=' + text, '_blank');
           }, idx * 400);
         });
       });
