@@ -405,7 +405,7 @@
       </div>
     </div>
 
-    <p class="rv-section-note">اختر مكان العيادة أولاً، ثم اليوم المناسب للحجز. يمكنك التنقل بين الشهور لحجز أي ميعاد خلال السنة القادمة.</p>
+    <p class="rv-section-note">اختر مكان العيادة أولاً، ثم اليوم المناسب للحجز. يمكنك التنقل بين الشهور لحجز أي ميعاد خلال السنة القادمة. المسموح زيارة واحدة شهرياً لكل مندوب.</p>
 
     <div style="display:flex; gap:10px; margin-bottom:18px;">
       <button type="button" class="rv-clinic-chip" data-clinic="tanta" id="rv-clinic-tanta">عيادة طنطا</button>
@@ -431,7 +431,7 @@
         <input type="text" id="rv-company" placeholder="اسم الشركة" />
       </div>
       <div class="rv-field">
-        <label>رقم الهاتف (اختياري)</label>
+        <label>رقم الموبايل</label>
         <input type="text" id="rv-phone" placeholder="01xxxxxxxxx" />
       </div>
       <button class="rv-submit" id="rv-submit">تأكيد الحجز</button>
@@ -857,6 +857,70 @@
   function takenPath(clinic, dateIso, slotKey){
     return 'taken/' + clinic + '/' + dateIso + '/' + slotKey;
   }
+
+  // ---- one visit per rep per calendar month (both clinics together) ----
+  // A public index repmonth/{YYYY-MM}/{key} = true marks that a rep already
+  // has a visit in that month. Keys are SHA-256 hashes (no names or phone
+  // numbers are stored in it): one of the phone number, one of name+company.
+  function monthOf(dateIso){ return String(dateIso).slice(0, 7); }
+  function normArabicKey(v){
+    return (v || '').trim().toLowerCase()
+      .replace(/[\u064B-\u0652\u0640]/g, '')      // tashkeel, tatweel
+      .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+      .replace(/^(د|دكتور|م)\s*[\/.]\s*/, '')
+      .replace(/[^0-9a-z\u0621-\u064A]+/g, '');
+  }
+  async function sha(text){
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cv-repmonth|' + text));
+    return Array.from(new Uint8Array(buf)).slice(0, 12).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+  }
+  async function repKeys(name, company, phone){
+    var keys = [];
+    var p = normalizePhone(phone);
+    if (p) keys.push('p' + await sha('p:' + p));
+    var n = normArabicKey(name), c = normArabicKey(company);
+    if (n) keys.push('n' + await sha('n:' + n + '|' + c));
+    return keys;
+  }
+  async function repMonthTaken(dateIso, name, company, phone){
+    var keys = await repKeys(name, company, phone);
+    for (var i = 0; i < keys.length; i++){
+      try { if (await dbGet('repmonth/' + monthOf(dateIso) + '/' + keys[i])) return true; } catch(e){}
+    }
+    return false;
+  }
+  async function repMonthMark(dateIso, name, company, phone){
+    var keys = await repKeys(name, company, phone);
+    await Promise.all(keys.map(function(k){
+      return dbSet('repmonth/' + monthOf(dateIso) + '/' + k, true).catch(function(){});
+    }));
+  }
+  // Frees the month again after a cancellation, unless the same rep still
+  // has another booking in that month (only the admin can see that).
+  async function repMonthRelease(dateIso, name, company, phone){
+    try {
+      var keys = await repKeys(name, company, phone);
+      var month = monthOf(dateIso);
+      if (firebase.auth().currentUser){
+        var still = false;
+        ['tanta','mahalla'].forEach(function(clinic){
+          var byDate = bookingsCache[clinic] || {};
+          Object.keys(byDate).forEach(function(iso){
+            if (monthOf(iso) !== month) return;
+            Object.keys(byDate[iso] || {}).forEach(function(k){
+              var e = byDate[iso][k];
+              if (!e || e.hidden) return;
+              var sameP = phone && normalizePhone(e.phone) === normalizePhone(phone);
+              var sameN = normArabicKey(e.name) === normArabicKey(name) && normArabicKey(e.company) === normArabicKey(company);
+              if (sameP || sameN) still = true;
+            });
+          });
+        });
+        if (still) return;
+      }
+      await Promise.all(keys.map(function(k){ return dbDelete('repmonth/' + month + '/' + k).catch(function(){}); }));
+    } catch(e){}
+  }
   async function loadBookings(){
     if (firebase.auth().currentUser){
       try {
@@ -903,6 +967,25 @@
         });
       });
       await dbSet('taken', idx);
+      var rm = {};
+      var jobs = [];
+      ['tanta','mahalla'].forEach(function(clinic){
+        var byDate = bookingsCache[clinic] || {};
+        Object.keys(byDate).forEach(function(iso){
+          if (iso < todayIso.slice(0, 7)) return;
+          Object.keys(byDate[iso] || {}).forEach(function(k){
+            var e = byDate[iso][k];
+            if (!e) return;
+            jobs.push(repKeys(e.name, e.company, e.phone).then(function(keys){
+              var m = monthOf(iso);
+              if (!rm[m]) rm[m] = {};
+              keys.forEach(function(key){ rm[m][key] = true; });
+            }));
+          });
+        });
+      });
+      await Promise.all(jobs);
+      try { await dbSet('repmonth', rm); } catch(e){}
     } catch(e){ takenSyncDone = false; }
   }
 
@@ -1019,6 +1102,11 @@
       msg.className = 'rv-msg err';
       return;
     }
+    if (!/^1[0125]\d{8}$/.test(normalizePhone(phone).replace(/^20(?=1[0125]\d{8}$)/, ''))){
+      msg.textContent = 'من فضلك أدخل رقم موبايل صحيح (مثال: 01012345678).';
+      msg.className = 'rv-msg err';
+      return;
+    }
     var bookingPath = 'bookings/' + currentClinic + '/' + selectedDateIso + '/' + selectedSlotKey;
     try{
       var phoneNormCheck = normalizePhone(phone);
@@ -1038,6 +1126,14 @@
         return;
       }
 
+      if (!firebase.auth().currentUser && await repMonthTaken(selectedDateIso, name, company, phone)){
+        var mParts = selectedDateIso.split('-');
+        msg.textContent = 'عذراً، لديك زيارة محجوزة بالفعل في شهر ' + ARABIC_MONTHS[+mParts[1]-1] + ' ' + mParts[0] +
+          '. المسموح زيارة واحدة شهرياً لكل مندوب لإتاحة الفرصة للجميع. يمكنك الحجز في شهر آخر.';
+        msg.className = 'rv-msg err';
+        return;
+      }
+
       var existing = null;
       try { existing = await dbGet(bookingPath); } catch(e){ existing = null; }
       if (!existing){
@@ -1053,6 +1149,7 @@
       }
       await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString(), confirmed:false});
       try { await dbSet(takenPath(currentClinic, selectedDateIso, selectedSlotKey), true); } catch(e){ /* index is best-effort */ }
+      await repMonthMark(selectedDateIso, name, company, phone);
       if (!bookingsCache[currentClinic][selectedDateIso]) bookingsCache[currentClinic][selectedDateIso] = {};
       bookingsCache[currentClinic][selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone, confirmed:false};
       renderDays();
@@ -1190,7 +1287,7 @@
         }
         var deleteBtn = '<button class="rv-remind-btn" type="button" style="border-color:var(--taken);color:var(--taken);" ' +
           'data-delete="1" data-clinic="' + escapeHtml(r.clinic) + '" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
-          'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" ' +
+          'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" data-company="' + escapeHtml(r.company || '') + '" ' +
           'data-cliniclabel="' + escapeHtml(g.clinicLabel) + '" ' +
           'data-datelabel="' + escapeHtml(g.dateLabel) + '" data-time="' + escapeHtml(r.time) + '">' + (r.phone ? 'إلغاء + واتساب' : 'إلغاء الحجز') + '</button>';
         var banBtn = '<button class="rv-remind-btn" type="button" style="border-color:#2b2b2b;color:#2b2b2b;" ' +
@@ -1243,8 +1340,10 @@
             window.open('https://wa.me/' + waNumber(phone) + '?text=' + text, '_blank');
           }
 
+          var companyD = btn.getAttribute('data-company') || '';
           Promise.all([dbDelete('bookings/' + clinic + '/' + dateIso + '/' + slotKey), dbDelete(takenPath(clinic, dateIso, slotKey)).catch(function(){})]).then(function(){
             if (bookingsCache[clinic] && bookingsCache[clinic][dateIso]) delete bookingsCache[clinic][dateIso][slotKey];
+            repMonthRelease(dateIso, name, companyD, phone);
             renderDays();
             renderBookingsList();
             if (selectedDateIso === dateIso) renderSlots();
@@ -1624,6 +1723,7 @@
         showConfirm('هل تريد إلغاء حجزك يوم ' + m.dateLabel + '، ' + m.time + '؟', function(){
           Promise.all([dbDelete('bookings/' + m.clinic + '/' + m.dateIso + '/' + m.slotKey), dbDelete(takenPath(m.clinic, m.dateIso, m.slotKey)).catch(function(){})]).then(function(){
             if (bookingsCache[m.clinic] && bookingsCache[m.clinic][m.dateIso]) delete bookingsCache[m.clinic][m.dateIso][m.slotKey];
+            repMonthRelease(m.dateIso, m.name, m.company, phoneRaw);
             renderDays();
             renderBookingsList();
             if (selectedDateIso === m.dateIso) renderSlots();
