@@ -405,7 +405,7 @@
       </div>
     </div>
 
-    <p class="rv-section-note">اختر مكان العيادة أولاً، ثم اليوم المناسب للحجز. يمكنك التنقل بين الشهور لحجز أي ميعاد خلال السنة القادمة. المسموح زيارة واحدة شهرياً لكل مندوب.</p>
+    <p class="rv-section-note">اختر مكان العيادة أولاً، ثم اليوم المناسب للحجز. يمكنك التنقل بين الشهور لحجز أي ميعاد خلال السنة القادمة. المسموح زيارة واحدة شهرياً لكل مندوب في كل عيادة.</p>
 
     <div style="display:flex; gap:10px; margin-bottom:18px;">
       <button type="button" class="rv-clinic-chip" data-clinic="tanta" id="rv-clinic-tanta">عيادة طنطا</button>
@@ -858,13 +858,13 @@
     return 'taken/' + clinic + '/' + dateIso + '/' + slotKey;
   }
 
-  // ---- one visit per rep per calendar month (both clinics together) ----
+  // ---- one visit per rep per calendar month, counted per clinic ----
   // The public 'taken' index (already readable by visitors, and writable by
   // them only to add a single true value) also carries, next to each slot
   // number, one 'rep_<hash>' marker per booking. The hash is a one-way
   // SHA-256 of the rep's phone number and of name+company, so the index
   // holds no names or numbers. A rep is blocked when a marker with his hash
-  // exists on any date of the chosen month, in either clinic.
+  // exists on any date of the chosen month in the clinic he is booking.
   function monthOf(dateIso){ return String(dateIso).slice(0, 7); }
   function normArabicKey(v){
     return (v || '').trim().toLowerCase()
@@ -886,17 +886,15 @@
     return keys;
   }
   // Fresh read of the public index, then look for this rep's markers in the month.
-  async function repMonthTaken(dateIso, name, company, phone){
+  async function repMonthTaken(clinic, dateIso, name, company, phone){
     var keys = await repKeys(name, company, phone);
     var month = monthOf(dateIso);
     var t = await dbGet('taken');
     var found = false;
-    ['tanta','mahalla'].forEach(function(clinic){
-      var byDate = (t && t[clinic]) || {};
-      Object.keys(byDate).forEach(function(iso){
-        if (monthOf(iso) !== month) return;
-        keys.forEach(function(k){ if (byDate[iso] && byDate[iso][k]) found = true; });
-      });
+    var byDate = (t && t[clinic]) || {};
+    Object.keys(byDate).forEach(function(iso){
+      if (monthOf(iso) !== month) return;
+      keys.forEach(function(k){ if (byDate[iso] && byDate[iso][k]) found = true; });
     });
     return found;
   }
@@ -1118,10 +1116,10 @@
         return;
       }
 
-      if (!firebase.auth().currentUser && await repMonthTaken(selectedDateIso, name, company, phone)){
+      if (!firebase.auth().currentUser && await repMonthTaken(currentClinic, selectedDateIso, name, company, phone)){
         var mParts = selectedDateIso.split('-');
-        msg.textContent = 'عذراً، لديك زيارة محجوزة بالفعل في شهر ' + ARABIC_MONTHS[+mParts[1]-1] + ' ' + mParts[0] +
-          '. المسموح زيارة واحدة شهرياً لكل مندوب لإتاحة الفرصة للجميع. يمكنك الحجز في شهر آخر.';
+        msg.textContent = 'عذراً، لديك زيارة محجوزة بالفعل في ' + CLINICS[currentClinic].label + ' خلال شهر ' + ARABIC_MONTHS[+mParts[1]-1] + ' ' + mParts[0] +
+          '. المسموح زيارة واحدة شهرياً لكل مندوب في كل عيادة لإتاحة الفرصة للجميع. يمكنك الحجز في شهر آخر.';
         msg.className = 'rv-msg err';
         return;
       }
