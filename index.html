@@ -1178,32 +1178,20 @@
         renderSlots();
         return;
       }
-      await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString(), confirmed:false});
+      await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString(), confirmed:true});
       try { await dbSet(takenPath(currentClinic, selectedDateIso, selectedSlotKey), true); } catch(e){ /* index is best-effort */ }
       await repMonthMark(currentClinic, selectedDateIso, name, company, phone);
       if (!bookingsCache[currentClinic][selectedDateIso]) bookingsCache[currentClinic][selectedDateIso] = {};
-      bookingsCache[currentClinic][selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone, confirmed:false};
+      bookingsCache[currentClinic][selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone, confirmed:true};
       renderDays();
       renderSlots();
       renderBookingsList();
 
       var d = week.dates.find(function(dd){ return isoDate(dd) === selectedDateIso; });
       var slotLabel = SLOT_TIMES.find(function(s){ return s.key === selectedSlotKey; }).label;
-      var waText = encodeURIComponent(
-        'تأكيد حجز زيارة\n' +
-        CLINICS[currentClinic].label + '\n' +
-        'الاسم: ' + name + '\n' +
-        'الشركة: ' + company + '\n' +
-        'اليوم: ' + ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '\n' +
-        'الموعد: ' + slotLabel
-      );
-      var waLink = 'https://wa.me/' + clinicWhatsApp + '?text=' + waText;
-      var confirmPath = bookingPath;
-      var confirmClinic = currentClinic, confirmDateIso = selectedDateIso, confirmSlotKey = selectedSlotKey;
       msg.innerHTML =
-        '<b>الحجز محجوز مبدئياً ولن يُعتمد نهائياً إلا بعد إرسال رسالة التأكيد.</b><br>' +
-        'اضغط الزرار وابعت الرسالة دلوقتي على واتساب:<br>' +
-        '<a class="rv-wa-btn" id="rv-wa-confirm-link" href="' + waLink + '" target="_blank" rel="noopener">إرسال تأكيد على واتساب الآن</a>' +
+        '<b>تم تأكيد حجزك بنجاح.</b><br>' +
+        CLINICS[currentClinic].label + ' — ' + ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '، ' + slotLabel +
         '<div style="margin-top:16px; border:1px solid var(--brass); border-radius:8px; padding:12px 14px; background:#FEFCF8; text-align:right;">' +
           '<div style="font-weight:700; color:var(--maroon); margin-bottom:8px; text-align:center;">تعليمات هامة لمندوبي شركات الأدوية</div>' +
           '<div style="font-size:13px; line-height:1.9; color:var(--ink);">' +
@@ -1216,14 +1204,6 @@
           '<div style="font-size:12px; color:var(--ink-soft); margin-top:10px; text-align:left;">أ.د/ محمد البربري</div>' +
         '</div>';
       msg.className = 'rv-msg ok';
-      document.getElementById('rv-wa-confirm-link').addEventListener('click', function(){
-        dbSet(confirmPath + '/confirmed', true).then(function(){
-          if (bookingsCache[confirmClinic] && bookingsCache[confirmClinic][confirmDateIso] && bookingsCache[confirmClinic][confirmDateIso][confirmSlotKey]){
-            bookingsCache[confirmClinic][confirmDateIso][confirmSlotKey].confirmed = true;
-          }
-          renderBookingsList();
-        }).catch(function(){});
-      });
       document.getElementById('rv-name').value = '';
       document.getElementById('rv-company').value = '';
       document.getElementById('rv-phone').value = '';
@@ -1338,7 +1318,7 @@
           'data-ban="1" data-clinic="' + escapeHtml(r.clinic) + '" data-date-iso="' + escapeHtml(r.dateIso) + '" data-slot="' + escapeHtml(String(r.slotKey)) + '" ' +
           'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" data-company="' + escapeHtml(r.company) + '">غياب (حظر)</button>';
         html += '<div class="rv-brow">' +
-          '<div>' + r.time + '<br><span class="' + (r.confirmed ? 'rv-slot-status open' : 'rv-slot-status taken') + '" style="font-size:11px;">' + (r.confirmed ? '✓ مؤكد واتساب' : '⏳ لم يؤكد بعد') + '</span></div>' +
+          '<div>' + r.time + '</div>' +
           '<div class="rv-bname">' + escapeHtml(r.name) + '<br><span class="rv-bmeta">' + escapeHtml(r.company) + '</span></div>' +
           '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + (g.past ? banBtn : reminderCell + deleteBtn + banBtn) + '</div>' +
           '</div>';
