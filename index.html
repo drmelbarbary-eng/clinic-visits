@@ -914,15 +914,56 @@
     } catch(e){}
   }
 
+  // How the admin list was filled: 'full' (whole bookings node), 'index'
+  // (slot by slot through the public index) or 'public' (names unreadable).
+  var bookingsReadMode = 'public';
+  // Fallback for an admin whose rules do not allow reading the whole
+  // 'bookings' node: the public index says which slots are taken, and each
+  // slot can be read on its own. Bookings made before the rep markers
+  // existed get theirs written here.
+  async function loadBookingsViaIndex(){
+    var t = await dbGet('taken');
+    var cutoff = isoDate(new Date(Date.now() - 14*24*60*60*1000));
+    var cache = {tanta:{}, mahalla:{}};
+    var jobs = [];
+    ['tanta','mahalla'].forEach(function(clinic){
+      var byDate = (t && t[clinic]) || {};
+      Object.keys(byDate).forEach(function(iso){
+        if (iso < cutoff) return;
+        Object.keys(byDate[iso] || {}).forEach(function(k){
+          if (k.indexOf('rep_') === 0 || !byDate[iso][k]) return;
+          jobs.push(dbGet('bookings/' + clinic + '/' + iso + '/' + k).then(function(e){
+            if (!e) return;
+            if (!cache[clinic][iso]) cache[clinic][iso] = {};
+            cache[clinic][iso][k] = e;
+            return repKeys(e.name, e.company, e.phone).then(function(keys){
+              return Promise.all(keys.filter(function(key){ return !byDate[iso][key]; }).map(function(key){
+                return dbSet('taken/' + clinic + '/' + iso + '/' + key, true).catch(function(){});
+              }));
+            });
+          }).catch(function(){}));
+        });
+      });
+    });
+    await Promise.all(jobs);
+    bookingsCache = cache;
+  }
   async function loadBookings(){
     if (firebase.auth().currentUser){
       try {
         var data = await dbGet('bookings');
         bookingsCache = {tanta: (data && data.tanta) || {}, mahalla: (data && data.mahalla) || {}};
+        bookingsReadMode = 'full';
         syncTakenIndex();
+        return;
+      } catch(e){ /* try the slot-by-slot route, then the public index */ }
+      try {
+        await loadBookingsViaIndex();
+        bookingsReadMode = 'index';
         return;
       } catch(e){ /* fall through to the public index */ }
     }
+    bookingsReadMode = 'public';
     try {
       var t = await dbGet('taken');
       var cache = {tanta:{}, mahalla:{}};
@@ -1263,7 +1304,11 @@
     });
 
     if (!groups.length){
-      note.textContent = 'لا يوجد حجوزات بعد.';
+      if (firebase.auth().currentUser && bookingsReadMode === 'public'){
+        note.textContent = 'تعذر قراءة تفاصيل الحجوزات من قاعدة البيانات، لذلك قد تبدو القائمة فارغة. حدّث الصفحة وأعد الدخول، وإن استمر ذلك فراجع قواعد Firebase.';
+      } else {
+        note.textContent = 'لا يوجد حجوزات بعد.';
+      }
       list.innerHTML = '';
       return;
     }
