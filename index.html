@@ -530,7 +530,7 @@
       </div>
 
       <div style="margin-top:30px;">
-        <h3 class="rv-section-title">الحجوزات القادمة (كل الشهور)</h3>
+        <h3 class="rv-section-title">الحجوزات (القادمة وآخر ١٤ يوماً)</h3>
         <p class="rv-section-note" id="rv-bookings-note">لا يوجد حجوزات بعد.</p>
         <div id="rv-bookings-list"></div>
       </div>
@@ -1215,11 +1215,14 @@
 
     // All upcoming bookings in any month (reps can now book up to a year
     // ahead), so the admin can see and cancel a booking whatever its month.
+    // Bookings of the last 14 days stay listed (marked 'past') so a no-show
+    // can still be recorded and banned after the day of the visit.
     var todayIso = isoDate(new Date());
+    var cutoffIso = isoDate(new Date(Date.now() - 14*24*60*60*1000));
     ['tanta','mahalla'].forEach(function(clinic){
       var clinicSlots = buildSlotTimes(clinicSettings[clinic]);
       var byDate = bookingsCache[clinic] || {};
-      Object.keys(byDate).filter(function(iso){ return iso >= todayIso; }).sort().forEach(function(iso){
+      Object.keys(byDate).filter(function(iso){ return iso >= cutoffIso; }).sort().forEach(function(iso){
         var b = byDate[iso] || {};
         var parts = iso.split('-');
         var d = new Date(+parts[0], +parts[1]-1, +parts[2]);
@@ -1245,13 +1248,19 @@
             clinicLabel: CLINICS[clinic].label,
             clinicKey: clinic,
             dateIso: iso,
+            past: iso < todayIso,
             dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + ' ' + d.getFullYear(),
             rows: rows
           });
         }
       });
     });
-    groups.sort(function(a, b){ return a.dateIso < b.dateIso ? -1 : a.dateIso > b.dateIso ? 1 : (a.clinicKey < b.clinicKey ? -1 : 1); });
+    // upcoming first (nearest date first), then past days (most recent first)
+    groups.sort(function(a, b){
+      if (a.past !== b.past) return a.past ? 1 : -1;
+      var c = a.dateIso < b.dateIso ? -1 : a.dateIso > b.dateIso ? 1 : (a.clinicKey < b.clinicKey ? -1 : 1);
+      return a.past ? -c : c;
+    });
 
     if (!groups.length){
       note.textContent = 'لا يوجد حجوزات بعد.';
@@ -1259,14 +1268,14 @@
       return;
     }
     var total = groups.reduce(function(sum,g){ return sum + g.rows.length; }, 0);
-    note.textContent = 'إجمالي الحجوزات: ' + total;
+    note.textContent = 'إجمالي الحجوزات: ' + total + ' (تشمل آخر ١٤ يوماً لتسجيل الغياب)';
 
     var html = '';
     groups.forEach(function(g, gi){
       html += '<div class="rv-blist" style="margin-bottom:14px;">' +
         '<div class="rv-brow rv-bhead"><div class="rv-day-group" style="grid-column: 1 / -1;">' +
-          '<span>' + g.clinicLabel + ' — ' + g.dateLabel + '</span>' +
-          '<button class="rv-remind-btn" data-remind-group="' + gi + '" type="button">إرسال تذكير لكل مندوبي اليوم</button>' +
+          '<span>' + g.clinicLabel + ' — ' + g.dateLabel + (g.past ? ' (سابق)' : '') + '</span>' +
+          (g.past ? '' : '<button class="rv-remind-btn" data-remind-group="' + gi + '" type="button">إرسال تذكير لكل مندوبي اليوم</button>') +
         '</div></div>';
       g.rows.forEach(function(r){
         var reminderCell = '';
@@ -1286,7 +1295,7 @@
         html += '<div class="rv-brow">' +
           '<div>' + r.time + '<br><span class="' + (r.confirmed ? 'rv-slot-status open' : 'rv-slot-status taken') + '" style="font-size:11px;">' + (r.confirmed ? '✓ مؤكد واتساب' : '⏳ لم يؤكد بعد') + '</span></div>' +
           '<div class="rv-bname">' + escapeHtml(r.name) + '<br><span class="rv-bmeta">' + escapeHtml(r.company) + '</span></div>' +
-          '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + reminderCell + deleteBtn + banBtn + '</div>' +
+          '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + (g.past ? banBtn : reminderCell + deleteBtn + banBtn) + '</div>' +
           '</div>';
       });
       html += '</div>';
