@@ -1111,7 +1111,7 @@
         return new Date(bl.banUntil).getTime() > now;
       };
       if (stillBanned(blPhone) || stillBanned(blName)){
-        msg.textContent = 'عذراً، لا يمكن إتمام الحجز. برجاء التواصل مع العيادة مباشرة.';
+        msg.textContent = 'عذراً، لا يمكن إتمام هذا الحجز حالياً لعدم الالتزام بموعد زيارة سابق. للاستفسار برجاء التواصل مع العيادة مباشرة.';
         msg.className = 'rv-msg err';
         return;
       }
