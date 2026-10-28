@@ -167,6 +167,7 @@
     font-size: 14px;
     line-height: 1.8;
   }
+  .rv-day.closed{opacity:.5; cursor:not-allowed}
   .rv-notice-sign{
     font-size: 12.5px;
     color: var(--ink-soft);
@@ -762,6 +763,23 @@
     return slots;
   }
 
+  var SAME_DAY_CUTOFF_MIN = 13*60; // لا حجز في نفس اليوم بعد الواحدة ظهراً
+  function cairoNow(){
+    try {
+      var parts = new Intl.DateTimeFormat('en-GB', {timeZone:'Africa/Cairo', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false}).formatToParts(new Date());
+      var o = {}; parts.forEach(function(x){ o[x.type] = x.value; });
+      return {iso: o.year + '-' + o.month + '-' + o.day, min: (parseInt(o.hour,10)%24)*60 + parseInt(o.minute,10)};
+    } catch(e){
+      var n = new Date();
+      return {iso: isoDate(n), min: n.getHours()*60 + n.getMinutes()};
+    }
+  }
+  function sameDayClosed(dateIso){
+    if (firebase.auth && firebase.auth().currentUser) return false;
+    var n = cairoNow();
+    return dateIso === n.iso && n.min >= SAME_DAY_CUTOFF_MIN;
+  }
+
   function icsStamp(dateIso, mins){
     var p = dateIso.split('-');
     return p[0] + p[1] + p[2] + 'T' + pad(Math.floor(mins/60)) + pad(mins%60) + '00';
@@ -1142,7 +1160,8 @@
       var iso = isoDate(d);
       var filled = countFilled(currentClinic, iso);
       var card = document.createElement('div');
-      card.className = 'rv-day' + (selectedDateIso === iso ? ' selected' : '');
+      var closedToday = sameDayClosed(iso);
+      card.className = 'rv-day' + (selectedDateIso === iso ? ' selected' : '') + (closedToday ? ' closed' : '');
       var dots = '';
       for (var i=0;i<SLOT_TIMES.length;i++){
         dots += '<span class="rv-dot' + (i < filled ? ' filled' : '') + '"></span>';
@@ -1150,10 +1169,11 @@
       card.innerHTML =
         '<div class="rv-day-name">' + ARABIC_DAY_NAMES[d.getDay()] + '</div>' +
         '<div class="rv-day-date">' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()] + '</div>' +
-        '<div class="rv-day-meter">' + filled + ' / ' + SLOT_TIMES.length + ' محجوز</div>' +
+        '<div class="rv-day-meter">' + (closedToday ? 'انتهى الحجز لليوم' : filled + ' / ' + SLOT_TIMES.length + ' محجوز') + '</div>' +
         '<div class="rv-dots">' + dots + '</div>';
       card.addEventListener('click', function(iso){
         return function(){
+          if (sameDayClosed(iso)){ showAlert('عذراً، الحجز في نفس اليوم متاح حتى الساعة ١ ظهراً فقط. برجاء اختيار يوم آخر.'); return; }
           selectedDateIso = iso;
           selectedSlotKey = null;
           renderDays();
@@ -1237,6 +1257,11 @@
         if (!bl.banUntil) return true; // legacy record with no expiry
         return new Date(bl.banUntil).getTime() > now;
       };
+      if (sameDayClosed(selectedDateIso)){
+        msg.textContent = 'عذراً، الحجز في نفس اليوم متاح حتى الساعة ١ ظهراً فقط. برجاء اختيار يوم آخر.';
+        msg.className = 'rv-msg err';
+        return;
+      }
       if (stillBanned(blPhone) || stillBanned(blName)){
         msg.textContent = 'عذراً، لا يمكن إتمام هذا الحجز حالياً لعدم الالتزام بموعد زيارة سابق.';
         msg.className = 'rv-msg err';
