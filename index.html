@@ -594,6 +594,12 @@
         <p class="rv-section-note" id="rv-bookings-note">لا يوجد حجوزات بعد.</p>
         <div id="rv-bookings-list"></div>
       </div>
+
+      <div style="margin-top:30px;">
+        <h3 class="rv-section-title">المحظورون من الحجز</h3>
+        <p class="rv-section-note" id="rv-ban-note">جارٍ التحميل…</p>
+        <div id="rv-ban-list"></div>
+      </div>
     </div>
 
     <div style="text-align:center; margin-top:26px;">
@@ -1344,6 +1350,67 @@
     return (v || '').trim().toLowerCase().replace(/\s+/g, '');
   }
 
+  async function renderBanList(){
+    var note = document.getElementById('rv-ban-note');
+    var box = document.getElementById('rv-ban-list');
+    if (!note || !box) return;
+    if (!(firebase.auth && firebase.auth().currentUser)){ box.innerHTML = ''; return; }
+    var data = null;
+    try { data = await dbGet('blacklist'); }
+    catch(e){
+      note.textContent = 'تعذر قراءة قائمة المحظورين.';
+      box.innerHTML = '';
+      return;
+    }
+    data = data || {};
+    var names = data.name || {}, phones = data.phone || {};
+    var now = Date.now();
+    var rows = [], coveredPhones = {};
+    Object.keys(names).forEach(function(k){
+      var r = names[k] || {};
+      var ph = normalizePhone(r.phone || '');
+      if (ph) coveredPhones[ph] = true;
+      if (r.banUntil && new Date(r.banUntil).getTime() <= now) return;
+      rows.push({nameKey:k, phoneKey: ph, name:r.name, company:r.company, phone:r.phone, until:r.banUntil});
+    });
+    Object.keys(phones).forEach(function(k){
+      if (coveredPhones[k]) return;
+      var r = phones[k] || {};
+      if (r.banUntil && new Date(r.banUntil).getTime() <= now) return;
+      rows.push({nameKey:null, phoneKey:k, name:r.name, company:r.company, phone:r.phone || k, until:r.banUntil});
+    });
+    if (!rows.length){
+      note.textContent = 'لا يوجد مندوبون محظورون حالياً.';
+      box.innerHTML = '';
+      return;
+    }
+    note.textContent = '';
+    box.innerHTML = rows.map(function(r, i){
+      var untilTxt = r.until ? new Date(r.until).toLocaleDateString('ar-EG', {day:'numeric', month:'long', year:'numeric'}) : '';
+      return '<div class="rv-booking-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--line, #E3D3B0);">' +
+        '<div style="font-size:14px; line-height:1.7;"><b>' + escapeHtml(r.name || '—') + '</b>' + (r.company ? ' — ' + escapeHtml(r.company) : '') +
+        '<br><span style="color:var(--ink-soft);">' + escapeHtml(r.phone || '') + (untilTxt ? ' · محظور حتى ' + escapeHtml(untilTxt) : '') + '</span></div>' +
+        '<button type="button" data-unban="' + i + '" style="font-family:inherit; font-size:13px; font-weight:700; padding:8px 12px; border-radius:8px; border:1.5px solid var(--teal-deep); background:#fff; color:var(--teal-deep); cursor:pointer; flex:none;">إلغاء الحظر</button>' +
+      '</div>';
+    }).join('');
+    box.querySelectorAll('[data-unban]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var r = rows[parseInt(btn.getAttribute('data-unban'), 10)];
+        showConfirm('هل تريد إلغاء حظر ' + (r.name || r.phone) + ' والسماح له بالحجز من جديد؟', function(){
+          var ops = [];
+          if (r.nameKey) ops.push(dbDelete('blacklist/name/' + r.nameKey));
+          if (r.phoneKey) ops.push(dbDelete('blacklist/phone/' + r.phoneKey));
+          Promise.all(ops).then(function(){
+            showAlert('تم إلغاء الحظر.');
+            renderBanList();
+          }).catch(function(){
+            showAlert('تعذر إلغاء الحظر، برجاء المحاولة مرة أخرى.');
+          });
+        });
+      });
+    });
+  }
+
   function renderBookingsList(){
     var note = document.getElementById('rv-bookings-note');
     var list = document.getElementById('rv-bookings-list');
@@ -1516,6 +1583,7 @@
             renderDays();
             renderBookingsList();
             if (selectedDateIso === dateIso) renderSlots();
+            renderBanList();
             showAlert('تم تسجيل الغياب ومنع ' + name + ' من الحجز لمدة شهرين.');
           }).catch(function(){
             showAlert('تعذر تنفيذ الحظر، برجاء المحاولة مرة أخرى.');
@@ -1698,6 +1766,7 @@
   // The login is restored after page load, so reload once it is known:
   // the admin gets full booking details, visitors the public index.
   firebase.auth().onAuthStateChanged(function(){
+    renderBanList();
     loadBookings().then(function(){
       renderDays();
       renderSlots();
