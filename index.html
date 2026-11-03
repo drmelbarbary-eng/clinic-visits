@@ -491,6 +491,10 @@
         <input type="text" id="rv-company" placeholder="اسم الشركة" />
       </div>
       <div class="rv-field">
+        <label>اسم المنتج</label>
+        <input type="text" id="rv-product" placeholder="اسم المنتج الذي ستعرضه" />
+      </div>
+      <div class="rv-field">
         <label>رقم الموبايل</label>
         <input type="text" id="rv-phone" placeholder="01xxxxxxxxx" />
       </div>
@@ -1234,14 +1238,15 @@
     var msg = document.getElementById('rv-msg');
     var name = document.getElementById('rv-name').value.trim();
     var company = document.getElementById('rv-company').value.trim();
+    var product = document.getElementById('rv-product').value.trim();
     var phone = document.getElementById('rv-phone').value.trim();
     if (!currentClinic || !selectedDateIso || selectedSlotKey === null){
       msg.textContent = 'من فضلك اختر العيادة واليوم والموعد أولاً.';
       msg.className = 'rv-msg err';
       return;
     }
-    if (!name || !company){
-      msg.textContent = 'من فضلك أدخل الاسم واسم الشركة.';
+    if (!name || !company || !product){
+      msg.textContent = 'من فضلك أدخل الاسم واسم الشركة واسم المنتج.';
       msg.className = 'rv-msg err';
       return;
     }
@@ -1295,11 +1300,11 @@
         renderSlots();
         return;
       }
-      await dbSet(bookingPath, {name:name, company:company, phone:phone, bookedAt: new Date().toISOString(), confirmed:true});
+      await dbSet(bookingPath, {name:name, company:company, product:product, phone:phone, bookedAt: new Date().toISOString(), confirmed:true});
       try { await dbSet(takenPath(currentClinic, selectedDateIso, selectedSlotKey), true); } catch(e){ /* index is best-effort */ }
       await repMonthMark(currentClinic, selectedDateIso, name, company, phone);
       if (!bookingsCache[currentClinic][selectedDateIso]) bookingsCache[currentClinic][selectedDateIso] = {};
-      bookingsCache[currentClinic][selectedDateIso][selectedSlotKey] = {name:name, company:company, phone:phone, confirmed:true};
+      bookingsCache[currentClinic][selectedDateIso][selectedSlotKey] = {name:name, company:company, product:product, phone:phone, confirmed:true};
       renderDays();
       renderSlots();
       renderBookingsList();
@@ -1327,6 +1332,7 @@
       if (calBtn) calBtn.addEventListener('click', function(){ downloadVisitIcs(bookedDateIso, slotObj, bookedClinicLabel); });
       document.getElementById('rv-name').value = '';
       document.getElementById('rv-company').value = '';
+      document.getElementById('rv-product').value = '';
       document.getElementById('rv-phone').value = '';
     } catch(e){
       msg.textContent = 'تعذر إتمام الحجز، برجاء المحاولة مرة أخرى.';
@@ -1437,14 +1443,14 @@
           if (entry){
             seen[s.key] = true;
             rows.push({clinic: clinic, dateIso: iso, slotKey: s.key, time: s.label,
-              name: entry.name, company: entry.company, phone: entry.phone, confirmed: !!entry.confirmed});
+              name: entry.name, company: entry.company, product: entry.product, phone: entry.phone, confirmed: !!entry.confirmed});
           }
         });
         // bookings whose slot no longer matches the current clinic hours
         Object.keys(b).forEach(function(k){
           if (seen[k] || !b[k] || b[k].hidden) return;
           rows.push({clinic: clinic, dateIso: iso, slotKey: k, time: String(k),
-            name: b[k].name, company: b[k].company, phone: b[k].phone, confirmed: !!b[k].confirmed});
+            name: b[k].name, company: b[k].company, product: b[k].product, phone: b[k].phone, confirmed: !!b[k].confirmed});
         });
         if (rows.length){
           groups.push({
@@ -1501,7 +1507,7 @@
           'data-phone="' + escapeHtml(r.phone || '') + '" data-name="' + escapeHtml(r.name) + '" data-company="' + escapeHtml(r.company) + '">غياب (حظر)</button>';
         html += '<div class="rv-brow">' +
           '<div>' + r.time + '</div>' +
-          '<div class="rv-bname">' + escapeHtml(r.name) + '<br><span class="rv-bmeta">' + escapeHtml(r.company) + '</span></div>' +
+          '<div class="rv-bname">' + escapeHtml(r.name) + '<br><span class="rv-bmeta">' + escapeHtml(r.company) + (r.product ? ' · المنتج: ' + escapeHtml(r.product) : '') + '</span></div>' +
           '<div style="display:flex; gap:6px; flex-wrap:wrap;">' + (g.past ? banBtn : reminderCell + deleteBtn + banBtn) + '</div>' +
           '</div>';
       });
