@@ -60,30 +60,36 @@
   <img class="pt-card-img" src="doctor-card.jpg" alt="الأستاذ الدكتور محمد البربري - استشاري أمراض القلب والأوعية الدموية">
   <div class="pt-head">
     <h1>حجز كشف</h1>
-    <p>اختر العيادة واليوم، وسجّل بياناتك لتحصل على رقم دورك</p>
+    <p>عيادة طنطا — اختر اليوم وسجّل بياناتك لتحصل على رقم دورك</p>
   </div>
 
   <div class="pt-body">
-    <div class="pt-note">رقم الدور يحدد ترتيبك في الكشف. برجاء الحضور في مواعيد العيادة المكتوبة أسفل اليوم.</div>
+    <div class="pt-note">رقم الدور يحدد ترتيبك في الكشف. برجاء الحضور في مواعيد العيادة المكتوبة أسفل اليوم.<br>يمكنك إلغاء حجزك بسهولة ودون أي حرج، قبل بدء الكشف، من خانة "عندك حجز وعايز تلغيه؟" أسفل الصفحة.</div>
 
-    <div class="pt-title" style="margin-top:0">العيادة</div>
-    <div class="pt-chips" id="pt-clinics"></div>
+    <div class="pt-chips" id="pt-clinics" style="display:none"></div>
 
-    <div class="pt-title">اليوم</div>
+    <div class="pt-title" style="margin-top:0">اليوم</div>
     <div class="pt-days" id="pt-days"></div>
 
     <div id="pt-form" style="display:none">
       <div class="pt-title">بياناتك</div>
       <div class="pt-field"><label for="pt-name">الاسم</label><input type="text" id="pt-name" autocomplete="name" placeholder="الاسم بالكامل"></div>
       <div class="pt-field"><label for="pt-phone">رقم الموبايل</label><input type="tel" id="pt-phone" inputmode="tel" autocomplete="tel" placeholder="01xxxxxxxxx"></div>
-      <div class="pt-field"><label for="pt-type">نوع الزيارة</label>
-        <select id="pt-type"><option value="كشف جديد">كشف جديد</option><option value="متابعة">متابعة</option></select>
+      <div class="pt-field"><label for="pt-type">نوع الحجز</label>
+        <select id="pt-type"><option value="كشف">كشف</option><option value="كشف مع إيكو">كشف مع إيكو</option><option value="إيكو فقط">إيكو فقط</option><option value="إعادة">إعادة</option></select>
       </div>
       <button class="pt-submit" id="pt-submit" type="button">احجز رقم دور</button>
       <div class="pt-msg" id="pt-msg"></div>
     </div>
 
     <div class="pt-ticket" id="pt-ticket"></div>
+
+    <div style="margin-top:30px;border-top:1px dashed var(--line);padding-top:6px">
+      <div class="pt-title" style="font-size:19px">عندك حجز وعايز تلغيه؟</div>
+      <p class="pt-small" style="margin:0 0 10px">اكتب رقم الموبايل الذي حجزت به، وسنعرض لك حجزك لتلغيه.</p>
+      <div class="pt-pin"><input type="tel" id="pt-c-phone" inputmode="tel" placeholder="01xxxxxxxxx"><button class="pt-btn" id="pt-c-search" type="button">بحث</button></div>
+      <div id="pt-c-results" style="margin-top:10px"></div>
+    </div>
 
     <button class="pt-admin-link" id="pt-admin-toggle" type="button">دخول السكرتارية</button>
     <div class="pt-admin" id="pt-admin">
@@ -94,7 +100,7 @@
       </div>
       <div id="pt-panel" style="display:none">
         <div class="pt-title">حجوزات المرضى</div>
-        <div class="pt-chips" id="pt-a-clinics"></div>
+        <div class="pt-chips" id="pt-a-clinics" style="display:none"></div>
         <div class="pt-days" id="pt-a-days" style="margin-top:12px"></div>
         <div id="pt-a-list" style="margin-top:12px"></div>
         <button class="pt-btn" id="pt-logout" type="button" style="margin-top:16px">تسجيل الخروج</button>
@@ -125,13 +131,6 @@
       days: {
         6: {txt: '٤ – ٧ مساءً', start: 16}, 0: {txt: '٤ – ٧ مساءً', start: 16},
         1: {txt: '٧ – ١٠ مساءً', start: 19}, 2: {txt: '٤ – ٧ مساءً', start: 16}, 3: {txt: '٤ – ٧ مساءً', start: 16}
-      }
-    },
-    mahalla: {
-      label: 'عيادة محلة مرحوم', phone: '01005743352', cap: 20,
-      days: {
-        6: {txt: '٨ – ١٠ مساءً', start: 20}, 0: {txt: '٨ – ١٠ مساءً', start: 20},
-        2: {txt: '٨ – ١٠ مساءً', start: 20}, 3: {txt: '٨ – ١٠ مساءً', start: 20}
       }
     }
   };
@@ -187,6 +186,9 @@
     var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cv-patient|' + text));
     return Array.from(new Uint8Array(buf)).slice(0, 12).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
   }
+  async function cancelKey(phone){
+    return await sha('c:' + normalizePhone(phone).replace(/^20(?=1[0125]\d{8}$)/, ''));
+  }
   async function phoneMarker(phone){
     return 'p' + await sha(normalizePhone(phone).replace(/^20(?=1[0125]\d{8}$)/, ''));
   }
@@ -200,6 +202,7 @@
   }
 
   function renderClinics(){
+    $('pt-clinics').style.display = Object.keys(CLINICS).length > 1 ? 'flex' : 'none';
     $('pt-clinics').innerHTML = Object.keys(CLINICS).map(function(k){
       return '<button type="button" class="pt-chip' + (k === clinic ? ' on' : '') + '" data-c="' + k + '">' + CLINICS[k].label + '</button>';
     }).join('');
@@ -262,7 +265,7 @@
       for (var n = 1; n <= cap && got === null; n++){
         if (day[n]) continue;
         try {
-          await dbSet('patients/' + clinic + '/' + dateIso + '/' + n, {name: name, phone: normalizePhone(phone), type: type, bookedAt: new Date().toISOString()});
+          await dbSet('patients/' + clinic + '/' + dateIso + '/' + n, {name: name, phone: normalizePhone(phone), type: type, mk: await cancelKey(phone), bookedAt: new Date().toISOString()});
           got = n;
         } catch(e){
           fails++;
@@ -275,13 +278,13 @@
         btn.disabled = false; return;
       }
       await dbSet('ptaken/' + clinic + '/' + dateIso + '/' + got, true).catch(function(){});
-      await dbSet('ptaken/' + clinic + '/' + dateIso + '/' + marker, true).catch(function(){});
+      await dbSet('ptaken/' + clinic + '/' + dateIso + '/' + marker, got).catch(function(){});
       await loadTaken(); renderDays();
       $('pt-form').style.display = 'none';
       var t = $('pt-ticket');
       t.innerHTML = '<p class="pt-small">تم تأكيد حجزك</p><div class="big">' + ar(got) + '</div><p>رقم دورك</p>' +
         '<p><b>' + CLINICS[clinic].label + '</b><br>' + dayLabel(dateIso) + '<br>مواعيد العيادة: ' + cfg.txt + '</p>' +
-        '<p class="pt-small">برجاء الحضور في مواعيد العيادة، ويمكنك الاحتفاظ بصورة من هذه الشاشة.<br>للاستفسار: ' + CLINICS[clinic].phone + '</p>';
+        '<p class="pt-small">برجاء الحضور في مواعيد العيادة، ويمكنك الاحتفاظ بصورة من هذه الشاشة.<br>لو تغيّرت ظروفك، يمكنك إلغاء الحجز بسهولة من أسفل الصفحة.<br>للاستفسار: ' + CLINICS[clinic].phone + '</p>';
       t.style.display = 'block';
       t.scrollIntoView({behavior:'smooth', block:'center'});
       $('pt-name').value = ''; $('pt-phone').value = '';
@@ -315,6 +318,7 @@
   });
 
   async function renderAdmin(){
+    $('pt-a-clinics').style.display = Object.keys(CLINICS).length > 1 ? 'flex' : 'none';
     $('pt-a-clinics').innerHTML = Object.keys(CLINICS).map(function(k){
       return '<button type="button" class="pt-chip' + (k === aClinic ? ' on' : '') + '" data-c="' + k + '">' + CLINICS[k].label + '</button>';
     }).join('');
@@ -362,6 +366,55 @@
       });
     });
   }
+
+  // ---- إلغاء الحجز من جانب المريض ----
+  // يُعرف حجز المريض من علامة الهاتف في الفهرس العام (قيمتها رقم الدور)، ولا
+  // تُقرأ بياناته. وإثبات الملكية مفتاح إلغاء مشتق من رقم هاتفه تتحقق منه القواعد.
+  $('pt-c-search').addEventListener('click', async function(){
+    var box = $('pt-c-results'), phone = $('pt-c-phone').value;
+    if (!validPhone(phone)){ box.innerHTML = '<p class="pt-msg err">من فضلك اكتب رقم موبايل صحيحاً.</p>'; return; }
+    box.innerHTML = '<p class="pt-small">جارٍ البحث…</p>';
+    try {
+      await loadTaken();
+      var marker = await phoneMarker(phone), now = cairoNow(), found = [];
+      var byDate = takenByDate[clinic] || {};
+      Object.keys(byDate).sort().forEach(function(d){
+        if (d < now.iso) return;
+        var n = byDate[d][marker];
+        if (n === undefined) return;
+        var cfg = CLINICS[clinic].days[dateFromIso(d).getUTCDay()];
+        var closed = d === now.iso && cfg && now.min >= cfg.start * 60;
+        found.push({d: d, n: n, closed: closed});
+      });
+      if (!found.length){ box.innerHTML = '<p class="pt-msg err">لم يتم العثور على حجز قادم بهذا الرقم.</p>'; return; }
+      box.innerHTML = found.map(function(f, i){
+        return '<div class="pt-row"><div class="pt-num">' + (typeof f.n === 'number' ? ar(f.n) : '؟') + '</div><div class="info"><b>' + CLINICS[clinic].label + '</b><br>' + dayLabel(f.d) +
+          (f.closed ? '<br><span class="pt-small">بدأ الكشف، لم يعد الإلغاء متاحاً.</span>' : '') + '</div>' +
+          (f.closed ? '' : '<button type="button" class="pt-btn del" data-cx="' + i + '">إلغاء الحجز</button>') + '</div>';
+      }).join('');
+      box.querySelectorAll('[data-cx]').forEach(function(b){
+        b.addEventListener('click', async function(){
+          var f = found[parseInt(b.getAttribute('data-cx'), 10)];
+          if (typeof f.n !== 'number'){ window.alert('تعذر إلغاء هذا الحجز من هنا.'); return; }
+          if (!window.confirm('هل تريد إلغاء حجزك يوم ' + dayLabel(f.d) + '؟ لا حرج في ذلك.')) return;
+          try {
+            var base = clinic + '/' + f.d + '/';
+            await dbSet('pcancel/' + base + f.n, await cancelKey(phone)).catch(function(){});
+            await dbDelete('patients/' + base + f.n);
+            await dbDelete('ptaken/' + base + f.n).catch(function(){});
+            await dbDelete('ptaken/' + base + marker).catch(function(){});
+            await dbDelete('pcancel/' + base + f.n).catch(function(){});
+            await loadTaken(); renderDays();
+            box.innerHTML = '<p class="pt-msg" style="display:block;background:var(--open-bg);color:var(--open)">تم إلغاء الحجز بنجاح، شكراً لإخطارنا.</p>';
+          } catch(e){
+            window.alert('تعذر إلغاء الحجز الآن، برجاء المحاولة مرة أخرى.');
+          }
+        });
+      });
+    } catch(e){
+      box.innerHTML = '<p class="pt-msg err">تعذر البحث الآن، برجاء المحاولة مرة أخرى.</p>';
+    }
+  });
 
   renderClinics();
   loadTaken().then(renderDays);
