@@ -457,6 +457,7 @@
       <div class="rv-notice-title">تعليمات هامة لمندوبي شركات الأدوية</div>
       <div class="rv-warn" role="alert"><span class="rv-warn-ic" aria-hidden="true">⚠️</span><span>تنبيه: الغياب عن الموعد المحجوز دون اعتذار مسبق يعرّضك للمنع من الحجز والزيارة لمدة شهرين.</span></div>
       <div class="rv-info">✅ الحجز لا يحتاج إلى تأكيد من العيادة، ويكون مفعّلاً بمجرد استكمال خطواته.</div>
+      <div class="rv-info">↩️ يمكنك إلغاء حجزك بسهولة ودون أي حرج حتى ٢٤ ساعة قبل الموعد، من خانة "عندك حجز وعايز تلغيه؟" أسفل الصفحة، ليتاح الموعد لزميل آخر.</div>
       <ol class="rv-notice-list">
         <li>عدم الإطالة عند عرض مميزات المنتج.</li>
         <li>عدم سؤال الطبيب إذا ما كان يقوم بكتابة الدواء من عدمه.</li>
@@ -1884,6 +1885,42 @@
   });
 
   // ---- rep self-service cancellation ----
+  // A rep can cancel up to 24 hours before the appointment, using the phone
+  // number the booking was made with. Visitors cannot read the whole
+  // 'bookings' node, so the search goes through the public 'taken' index and
+  // reads each taken slot on its own.
+  var CANCEL_NOTICE_HOURS = 24;
+  function apptMs(dateIso, startMin){
+    var p = dateIso.split('-');
+    return Date.UTC(+p[0], +p[1]-1, +p[2], 0, startMin);
+  }
+  function hoursUntil(dateIso, startMin){
+    var n = cairoNow();
+    return (apptMs(dateIso, startMin) - apptMs(n.iso, n.min)) / 3600000;
+  }
+  async function findMyBookings(phoneNorm){
+    var t = await dbGet('taken');
+    var today = cairoNow().iso;
+    var jobs = [];
+    ['tanta','mahalla'].forEach(function(clinic){
+      var byDate = (t && t[clinic]) || {};
+      Object.keys(byDate).forEach(function(dateIso){
+        if (dateIso < today) return;
+        Object.keys(byDate[dateIso] || {}).forEach(function(slotKey){
+          if (!/^\d+$/.test(slotKey)) return;
+          jobs.push(dbGet('bookings/' + clinic + '/' + dateIso + '/' + slotKey).then(function(entry){
+            if (entry && normalizePhone(entry.phone) === phoneNorm){
+              return {clinic:clinic, dateIso:dateIso, slotKey:slotKey, entry:entry};
+            }
+            return null;
+          }));
+        });
+      });
+    });
+    var found = (await Promise.all(jobs)).filter(Boolean);
+    found.sort(function(a,b){ return a.dateIso < b.dateIso ? -1 : a.dateIso > b.dateIso ? 1 : (+a.slotKey) - (+b.slotKey); });
+    return found;
+  }
   document.getElementById('rv-self-search').addEventListener('click', async function(){
     var resultsBox = document.getElementById('rv-self-results');
     var phoneRaw = document.getElementById('rv-self-phone').value;
@@ -1893,58 +1930,64 @@
       return;
     }
     resultsBox.innerHTML = '<p class="rv-section-note">جارٍ البحث…</p>';
-    await loadBookings();
-    var matches = [];
-    ['tanta','mahalla'].forEach(function(clinic){
-      var clinicWeek = getActiveWeekForClinic(CLINICS[clinic].allowedDow);
-      var clinicSlots = buildSlotTimes(clinicSettings[clinic]);
-      clinicWeek.dates.forEach(function(d){
-        var iso = isoDate(d);
-        var b = (bookingsCache[clinic] && bookingsCache[clinic][iso]) || {};
-        clinicSlots.forEach(function(s){
-          var entry = b[s.key];
-          if (entry && normalizePhone(entry.phone) === phoneNorm){
-            matches.push({
-              clinic: clinic,
-              clinicLabel: CLINICS[clinic].label,
-              dateIso: iso,
-              slotKey: s.key,
-              dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
-              time: s.label,
-              name: entry.name,
-              company: entry.company
-            });
-          }
-        });
-      });
+    var found;
+    try { found = await findMyBookings(phoneNorm); }
+    catch(e){
+      resultsBox.innerHTML = '<p class="rv-msg err">تعذر البحث عن الحجز الآن، برجاء المحاولة مرة أخرى.</p>';
+      return;
+    }
+    var matches = found.map(function(f){
+      var d = new Date(f.dateIso + 'T12:00:00');
+      var slot = buildSlotTimes(clinicSettings[f.clinic]).find(function(x){ return String(x.key) === String(f.slotKey); });
+      return {
+        clinic: f.clinic,
+        clinicLabel: CLINICS[f.clinic].label,
+        dateIso: f.dateIso,
+        slotKey: f.slotKey,
+        dateLabel: ARABIC_DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + ARABIC_MONTHS[d.getMonth()],
+        time: slot ? slot.label : '',
+        canCancel: slot ? hoursUntil(f.dateIso, slot.startMin) >= CANCEL_NOTICE_HOURS : false,
+        name: f.entry.name,
+        company: f.entry.company,
+        phone: f.entry.phone
+      };
     });
     if (!matches.length){
-      resultsBox.innerHTML = '<p class="rv-msg err">لم يتم العثور على حجز بهذا الرقم.</p>';
+      resultsBox.innerHTML = '<p class="rv-msg err">لم يتم العثور على حجز قادم بهذا الرقم.</p>';
       return;
     }
     var html = '';
     matches.forEach(function(m, idx){
       html += '<div class="rv-slot-row">' +
         '<div><div class="rv-slot-time">' + m.clinicLabel + ' — ' + m.dateLabel + '، ' + m.time + '</div>' +
-        '<div class="rv-slot-status open">' + escapeHtml(m.name) + ' — ' + escapeHtml(m.company) + '</div></div>' +
-        '<button class="rv-slot-pick" data-self-cancel="' + idx + '" type="button">إلغاء الحجز</button>' +
+        '<div class="rv-slot-status open">' + escapeHtml(m.name) + ' — ' + escapeHtml(m.company) + '</div>' +
+        (m.canCancel ? '' : '<div class="rv-slot-status" style="color:var(--ink-soft);">انتهت مهلة الإلغاء الإلكتروني (قبل الموعد بـ٢٤ ساعة).</div>') +
+        '</div>' +
+        (m.canCancel ? '<button class="rv-slot-pick" data-self-cancel="' + idx + '" type="button">إلغاء الحجز</button>' : '') +
         '</div>';
     });
     resultsBox.innerHTML = html;
     resultsBox.querySelectorAll('[data-self-cancel]').forEach(function(btn){
       btn.addEventListener('click', function(){
         var m = matches[parseInt(btn.getAttribute('data-self-cancel'), 10)];
-        showConfirm('هل تريد إلغاء حجزك يوم ' + m.dateLabel + '، ' + m.time + '؟', function(){
-          Promise.all([dbDelete('bookings/' + m.clinic + '/' + m.dateIso + '/' + m.slotKey), dbDelete(takenPath(m.clinic, m.dateIso, m.slotKey)).catch(function(){})]).then(function(){
+        showConfirm('هل تريد إلغاء حجزك يوم ' + m.dateLabel + '، ' + m.time + '؟ لا حرج في ذلك.', async function(){
+          try {
+            var bPath = 'bookings/' + m.clinic + '/' + m.dateIso + '/' + m.slotKey;
+            // proof of ownership that the database rules check before allowing the delete
+            await dbSet('cancelreq/' + m.clinic + '/' + m.dateIso + '/' + m.slotKey, m.phone).catch(function(){});
+            await dbDelete(bPath);
+            await dbDelete(takenPath(m.clinic, m.dateIso, m.slotKey)).catch(function(){});
+            await dbDelete('cancelreq/' + m.clinic + '/' + m.dateIso + '/' + m.slotKey).catch(function(){});
             if (bookingsCache[m.clinic] && bookingsCache[m.clinic][m.dateIso]) delete bookingsCache[m.clinic][m.dateIso][m.slotKey];
             repMonthRelease(m.clinic, m.dateIso, m.name, m.company, phoneRaw);
+            await loadBookings();
             renderDays();
             renderBookingsList();
             if (selectedDateIso === m.dateIso) renderSlots();
-            resultsBox.innerHTML = '<p class="rv-msg ok">تم إلغاء الحجز بنجاح.</p>';
-          }).catch(function(){
-            showAlert('تعذر إلغاء الحجز، برجاء المحاولة مرة أخرى.');
-          });
+            resultsBox.innerHTML = '<p class="rv-msg ok">تم إلغاء الحجز بنجاح، شكراً لإخطارنا.</p>';
+          } catch(e){
+            showAlert('تعذر إلغاء الحجز الآن، برجاء المحاولة مرة أخرى.');
+          }
         });
       });
     });
