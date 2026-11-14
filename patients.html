@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>حجز كشف — عيادة أ.د/ محمد البربري</title>
+<meta name="theme-color" content="#5C2426">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800&display=swap');
+  :root{
+    --paper:#F6F4EF; --ink:#1C2B28; --ink-soft:#4B5C57; --teal:#164A43; --teal-deep:#0D302B;
+    --maroon:#5C2426; --brass:#B08D4F; --brass-soft:#E3D3B0; --open:#2F6F5E; --open-bg:#E7F0EC;
+    --taken:#A9463B; --taken-bg:#F5E7E4; --line:rgba(28,43,40,0.14); --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper)}
+  .pt-root{direction:rtl;font-family:'Cairo',sans-serif;color:var(--ink);max-width:640px;margin:0 auto;line-height:1.6;background:var(--paper)}
+  .pt-card-img{width:100%;display:block}
+  .pt-head{background:var(--maroon);color:#F6F4EF;padding:24px 24px 28px;text-align:center}
+  .pt-head h1{margin:0;font-family:'Amiri',serif;font-size:30px;line-height:1.4}
+  .pt-head p{margin:6px 0 0;color:var(--brass-soft);font-size:15px}
+  .pt-body{padding:22px 20px 40px}
+  .pt-note{background:#EAF3F0;border:1px solid var(--teal-deep);border-radius:10px;padding:10px 14px;color:var(--teal-deep);font-weight:700;font-size:14px;line-height:1.8;margin:0 0 18px}
+  .pt-title{font-family:'Amiri',serif;font-size:22px;color:var(--maroon);margin:22px 0 10px}
+  .pt-chips{display:flex;gap:10px;flex-wrap:wrap}
+  .pt-chip{flex:1;min-width:140px;font:inherit;font-weight:700;font-size:16px;padding:12px;border-radius:10px;border:1.5px solid var(--teal);background:#fff;color:var(--teal);cursor:pointer}
+  .pt-chip.on{background:var(--teal);color:#fff}
+  .pt-days{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .pt-day{font:inherit;text-align:right;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+  .pt-day b{display:block;font-size:16px}
+  .pt-day span{display:block;font-size:13px;color:var(--ink-soft)}
+  .pt-day.on{border-color:var(--maroon);background:#FBF3F1}
+  .pt-day.full,.pt-day.closed{opacity:.55;cursor:not-allowed;background:var(--taken-bg)}
+  .pt-field{margin:12px 0}
+  .pt-field label{display:block;font-weight:700;font-size:14px;margin-bottom:4px}
+  .pt-field input,.pt-field select{width:100%;font:inherit;font-size:16px;padding:12px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--ink)}
+  .pt-submit{width:100%;font:inherit;font-weight:800;font-size:18px;padding:14px;border:0;border-radius:10px;background:var(--maroon);color:#fff;cursor:pointer;margin-top:10px}
+  .pt-submit:disabled{opacity:.6}
+  .pt-msg{margin-top:12px;padding:10px 14px;border-radius:10px;font-weight:700;font-size:15px;display:none}
+  .pt-msg.err{display:block;background:var(--taken-bg);color:var(--taken)}
+  .pt-ticket{display:none;text-align:center;background:#fff;border:2px dashed var(--brass);border-radius:16px;padding:22px 16px;margin-top:18px}
+  .pt-ticket .big{font-family:'Cairo',sans-serif;font-size:76px;font-weight:800;color:var(--maroon);line-height:1.1}
+  .pt-ticket p{margin:6px 0;font-weight:600}
+  .pt-small{font-size:13px;color:var(--ink-soft)}
+  .pt-admin-link{display:block;margin:30px auto 0;background:none;border:0;font:inherit;font-size:13px;color:var(--ink-soft);text-decoration:underline;cursor:pointer}
+  .pt-admin{display:none;border-top:1px dashed var(--line);margin-top:26px;padding-top:6px}
+  .pt-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .pt-num{flex:none;width:44px;height:44px;border-radius:50%;background:var(--maroon);color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center}
+  .pt-row .info{flex:1;font-size:14px;line-height:1.6;min-width:0}
+  .pt-btn{font:inherit;font-weight:700;font-size:13px;padding:7px 11px;border-radius:8px;border:1.5px solid var(--teal);background:#fff;color:var(--teal);cursor:pointer;text-decoration:none;display:inline-block}
+  .pt-btn.del{border-color:var(--taken);color:var(--taken)}
+  .pt-pin{display:flex;gap:8px}
+  .pt-pin input{flex:1;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1.5px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="pt-root">
+  <img class="pt-card-img" src="doctor-card.jpg" alt="الأستاذ الدكتور محمد البربري - استشاري أمراض القلب والأوعية الدموية">
+  <div class="pt-head">
+    <h1>حجز كشف</h1>
+    <p>اختر العيادة واليوم، وسجّل بياناتك لتحصل على رقم دورك</p>
+  </div>
+
+  <div class="pt-body">
+    <div class="pt-note">رقم الدور يحدد ترتيبك في الكشف. برجاء الحضور في مواعيد العيادة المكتوبة أسفل اليوم.</div>
+
+    <div class="pt-title" style="margin-top:0">العيادة</div>
+    <div class="pt-chips" id="pt-clinics"></div>
+
+    <div class="pt-title">اليوم</div>
+    <div class="pt-days" id="pt-days"></div>
+
+    <div id="pt-form" style="display:none">
+      <div class="pt-title">بياناتك</div>
+      <div class="pt-field"><label for="pt-name">الاسم</label><input type="text" id="pt-name" autocomplete="name" placeholder="الاسم بالكامل"></div>
+      <div class="pt-field"><label for="pt-phone">رقم الموبايل</label><input type="tel" id="pt-phone" inputmode="tel" autocomplete="tel" placeholder="01xxxxxxxxx"></div>
+      <div class="pt-field"><label for="pt-type">نوع الزيارة</label>
+        <select id="pt-type"><option value="كشف جديد">كشف جديد</option><option value="متابعة">متابعة</option></select>
+      </div>
+      <button class="pt-submit" id="pt-submit" type="button">احجز رقم دور</button>
+      <div class="pt-msg" id="pt-msg"></div>
+    </div>
+
+    <div class="pt-ticket" id="pt-ticket"></div>
+
+    <button class="pt-admin-link" id="pt-admin-toggle" type="button">دخول السكرتارية</button>
+    <div class="pt-admin" id="pt-admin">
+      <div id="pt-login">
+        <div class="pt-title">دخول السكرتارية</div>
+        <div class="pt-pin"><input type="password" id="pt-pin" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="كلمة المرور"><button class="pt-btn" id="pt-login-btn" type="button">دخول</button></div>
+        <div class="pt-msg" id="pt-login-msg"></div>
+      </div>
+      <div id="pt-panel" style="display:none">
+        <div class="pt-title">حجوزات المرضى</div>
+        <div class="pt-chips" id="pt-a-clinics"></div>
+        <div class="pt-days" id="pt-a-days" style="margin-top:12px"></div>
+        <div id="pt-a-list" style="margin-top:12px"></div>
+        <button class="pt-btn" id="pt-logout" type="button" style="margin-top:16px">تسجيل الخروج</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script>
+(function(){
+  var ADMIN_EMAIL = "drm.elbarbary@gmail.com";
+  var FIREBASE_DB_URL = "https://clinic-visits-default-rtdb.europe-west1.firebasedatabase.app";
+  firebase.initializeApp({
+    apiKey: "AIzaSyCqWioIdYxJurhrhBBtAHw7PFg1Ht1mOkc",
+    authDomain: "clinic-visits.firebaseapp.com",
+    databaseURL: FIREBASE_DB_URL,
+    projectId: "clinic-visits",
+    appId: "1:343598260234:web:56da77823bb23d004afff3"
+  });
+
+  // ---- إعدادات العيادات: عدّل الأرقام هنا (cap = أقصى عدد مرضى في اليوم) ----
+  // days: رقم اليوم (0 الأحد ... 6 السبت) => {txt: نص المواعيد، start: ساعة بدء الكشف بالساعات}
+  var CLINICS = {
+    tanta: {
+      label: 'عيادة طنطا', phone: '01123411992', cap: 25,
+      days: {
+        6: {txt: '٤ – ٧ مساءً', start: 16}, 0: {txt: '٤ – ٧ مساءً', start: 16},
+        1: {txt: '٧ – ١٠ مساءً', start: 19}, 2: {txt: '٤ – ٧ مساءً', start: 16}, 3: {txt: '٤ – ٧ مساءً', start: 16}
+      }
+    },
+    mahalla: {
+      label: 'عيادة محلة مرحوم', phone: '01005743352', cap: 20,
+      days: {
+        6: {txt: '٨ – ١٠ مساءً', start: 20}, 0: {txt: '٨ – ١٠ مساءً', start: 20},
+        2: {txt: '٨ – ١٠ مساءً', start: 20}, 3: {txt: '٨ – ١٠ مساءً', start: 20}
+      }
+    }
+  };
+  var DAYS_AHEAD = 21;
+  var DAY_NAMES = {0:'الأحد',1:'الاثنين',2:'الثلاثاء',3:'الأربعاء',4:'الخميس',5:'الجمعة',6:'السبت'};
+  var MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function ar(n){ return Number(n).toLocaleString('ar-EG', {useGrouping:false}); }
+  function normalizePhone(v){ return (v || '').replace(/[٠-٩]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); }).replace(/[^0-9]/g, '').replace(/^0+/, ''); }
+  function validPhone(v){ return /^(20)?1[0125]\d{8}$/.test(normalizePhone(v)); }
+  function waNumber(v){ var n = normalizePhone(v); if (/^1[0125]\d{8}$/.test(n)) n = '20' + n; return n; }
+
+  function cairoNow(){
+    try {
+      var parts = new Intl.DateTimeFormat('en-GB', {timeZone:'Africa/Cairo', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false}).formatToParts(new Date());
+      var o = {}; parts.forEach(function(x){ o[x.type] = x.value; });
+      return {iso: o.year + '-' + o.month + '-' + o.day, min: (parseInt(o.hour,10)%24)*60 + parseInt(o.minute,10)};
+    } catch(e){
+      var n = new Date(), p = function(x){ return (x<10?'0':'') + x; };
+      return {iso: n.getFullYear() + '-' + p(n.getMonth()+1) + '-' + p(n.getDate()), min: n.getHours()*60 + n.getMinutes()};
+    }
+  }
+  function dateFromIso(iso){ return new Date(iso + 'T12:00:00Z'); }
+  function addDays(iso, k){ var d = dateFromIso(iso); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0,10); }
+  function dayLabel(iso){ var d = dateFromIso(iso); return DAY_NAMES[d.getUTCDay()] + ' ' + ar(d.getUTCDate()) + ' ' + MONTHS[d.getUTCMonth()]; }
+
+  // ---- Firebase REST ----
+  async function dbUrl(path){
+    var u = FIREBASE_DB_URL + '/' + path + '.json';
+    var user = firebase.auth().currentUser;
+    if (user) u += '?auth=' + encodeURIComponent(await user.getIdToken());
+    return u;
+  }
+  async function dbGet(path){
+    var u = await dbUrl(path);
+    u += (u.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+    var r = await fetch(u, {cache:'no-store'});
+    if (!r.ok) throw new Error('read');
+    return r.json();
+  }
+  async function dbSet(path, v){
+    var r = await fetch(await dbUrl(path), {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(v)});
+    if (!r.ok) throw new Error('write');
+    return r.json();
+  }
+  async function dbDelete(path){
+    var r = await fetch(await dbUrl(path), {method:'DELETE'});
+    if (!r.ok) throw new Error('delete');
+  }
+  async function sha(text){
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cv-patient|' + text));
+    return Array.from(new Uint8Array(buf)).slice(0, 12).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  }
+  async function phoneMarker(phone){
+    return 'p' + await sha(normalizePhone(phone).replace(/^20(?=1[0125]\d{8}$)/, ''));
+  }
+
+  // ---- حالة الصفحة ----
+  var clinic = 'tanta', dateIso = null, takenByDate = {};
+
+  function countFor(clinicKey, iso){
+    var d = (takenByDate[clinicKey] || {})[iso] || {};
+    return Object.keys(d).filter(function(k){ return /^\d+$/.test(k); }).length;
+  }
+
+  function renderClinics(){
+    $('pt-clinics').innerHTML = Object.keys(CLINICS).map(function(k){
+      return '<button type="button" class="pt-chip' + (k === clinic ? ' on' : '') + '" data-c="' + k + '">' + CLINICS[k].label + '</button>';
+    }).join('');
+    $('pt-clinics').querySelectorAll('[data-c]').forEach(function(b){
+      b.addEventListener('click', function(){ clinic = b.getAttribute('data-c'); dateIso = null; $('pt-form').style.display = 'none'; renderClinics(); renderDays(); });
+    });
+  }
+
+  function renderDays(){
+    var now = cairoNow(), c = CLINICS[clinic], html = '';
+    for (var i = 0; i <= DAYS_AHEAD; i++){
+      var iso = addDays(now.iso, i), dow = dateFromIso(iso).getUTCDay(), cfg = c.days[dow];
+      if (!cfg) continue;
+      var used = countFor(clinic, iso), full = used >= c.cap;
+      var closed = (iso === now.iso && now.min >= cfg.start * 60);
+      var cls = 'pt-day' + (iso === dateIso ? ' on' : '') + (full ? ' full' : '') + (closed ? ' closed' : '');
+      var status = closed ? 'انتهى الحجز لليوم' : (full ? 'مكتمل' : 'متاح ' + ar(c.cap - used) + ' من ' + ar(c.cap));
+      html += '<button type="button" class="' + cls + '" data-d="' + iso + '"' + ((full || closed) ? ' data-off="1"' : '') + '><b>' + dayLabel(iso) + '</b><span>' + cfg.txt + '</span><span>' + status + '</span></button>';
+    }
+    $('pt-days').innerHTML = html || '<p class="pt-small">لا توجد أيام متاحة حالياً.</p>';
+    $('pt-days').querySelectorAll('[data-d]').forEach(function(b){
+      b.addEventListener('click', function(){
+        if (b.getAttribute('data-off')) return;
+        dateIso = b.getAttribute('data-d');
+        $('pt-ticket').style.display = 'none';
+        $('pt-form').style.display = 'block';
+        showMsg('');
+        renderDays();
+      });
+    });
+  }
+
+  async function loadTaken(){
+    try {
+      var t = await dbGet('ptaken');
+      takenByDate = t || {};
+    } catch(e){ takenByDate = {}; }
+  }
+
+  function showMsg(txt){
+    var m = $('pt-msg');
+    m.textContent = txt || '';
+    m.className = 'pt-msg' + (txt ? ' err' : '');
+  }
+
+  // ---- الحجز: أخذ أول رقم دور متاح ----
+  async function book(){
+    var name = $('pt-name').value.trim(), phone = $('pt-phone').value.trim(), type = $('pt-type').value;
+    if (!dateIso){ showMsg('من فضلك اختر اليوم.'); return; }
+    if (name.length < 3){ showMsg('من فضلك اكتب الاسم بالكامل.'); return; }
+    if (!validPhone(phone)){ showMsg('من فضلك اكتب رقم موبايل صحيحاً (01xxxxxxxxx).'); return; }
+    var now = cairoNow(), cfg = CLINICS[clinic].days[dateIso && dateFromIso(dateIso).getUTCDay()];
+    if (!cfg || dateIso < now.iso || (dateIso === now.iso && now.min >= cfg.start * 60)){ showMsg('هذا اليوم لم يعد متاحاً للحجز، اختر يوماً آخر.'); return; }
+    var btn = $('pt-submit'); btn.disabled = true; showMsg('');
+    try {
+      var day = (await dbGet('ptaken/' + clinic + '/' + dateIso)) || {};
+      var marker = await phoneMarker(phone);
+      if (day[marker]){ showMsg('لديك حجز بالفعل في هذا اليوم بنفس الرقم.'); btn.disabled = false; return; }
+      var cap = CLINICS[clinic].cap, got = null, fails = 0;
+      for (var n = 1; n <= cap && got === null; n++){
+        if (day[n]) continue;
+        try {
+          await dbSet('patients/' + clinic + '/' + dateIso + '/' + n, {name: name, phone: normalizePhone(phone), type: type, bookedAt: new Date().toISOString()});
+          got = n;
+        } catch(e){
+          fails++;
+          if (fails >= 6) break;
+        }
+      }
+      if (got === null){
+        await loadTaken(); renderDays();
+        showMsg('تعذر إتمام الحجز، ربما اكتمل اليوم. برجاء اختيار يوم آخر أو المحاولة مرة أخرى.');
+        btn.disabled = false; return;
+      }
+      await dbSet('ptaken/' + clinic + '/' + dateIso + '/' + got, true).catch(function(){});
+      await dbSet('ptaken/' + clinic + '/' + dateIso + '/' + marker, true).catch(function(){});
+      await loadTaken(); renderDays();
+      $('pt-form').style.display = 'none';
+      var t = $('pt-ticket');
+      t.innerHTML = '<p class="pt-small">تم تأكيد حجزك</p><div class="big">' + ar(got) + '</div><p>رقم دورك</p>' +
+        '<p><b>' + CLINICS[clinic].label + '</b><br>' + dayLabel(dateIso) + '<br>مواعيد العيادة: ' + cfg.txt + '</p>' +
+        '<p class="pt-small">برجاء الحضور في مواعيد العيادة، ويمكنك الاحتفاظ بصورة من هذه الشاشة.<br>للاستفسار: ' + CLINICS[clinic].phone + '</p>';
+      t.style.display = 'block';
+      t.scrollIntoView({behavior:'smooth', block:'center'});
+      $('pt-name').value = ''; $('pt-phone').value = '';
+      dateIso = null;
+    } catch(e){
+      showMsg('تعذر الاتصال بالخادم، برجاء المحاولة مرة أخرى.');
+    }
+    btn.disabled = false;
+  }
+  $('pt-submit').addEventListener('click', book);
+
+  // ---- السكرتارية ----
+  var aClinic = 'tanta', aDate = null;
+  $('pt-admin-toggle').addEventListener('click', function(){
+    var a = $('pt-admin');
+    a.style.display = a.style.display === 'block' ? 'none' : 'block';
+  });
+  $('pt-login-btn').addEventListener('click', function(){
+    var m = $('pt-login-msg'); m.className = 'pt-msg'; m.textContent = '';
+    firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, $('pt-pin').value).then(function(){
+      $('pt-pin').value = '';
+    }).catch(function(){
+      m.textContent = 'كلمة المرور غير صحيحة.'; m.className = 'pt-msg err';
+    });
+  });
+  $('pt-logout').addEventListener('click', function(){ firebase.auth().signOut(); });
+  firebase.auth().onAuthStateChanged(function(user){
+    $('pt-login').style.display = user ? 'none' : 'block';
+    $('pt-panel').style.display = user ? 'block' : 'none';
+    if (user){ $('pt-admin').style.display = 'block'; renderAdmin(); }
+  });
+
+  async function renderAdmin(){
+    $('pt-a-clinics').innerHTML = Object.keys(CLINICS).map(function(k){
+      return '<button type="button" class="pt-chip' + (k === aClinic ? ' on' : '') + '" data-c="' + k + '">' + CLINICS[k].label + '</button>';
+    }).join('');
+    $('pt-a-clinics').querySelectorAll('[data-c]').forEach(function(b){
+      b.addEventListener('click', function(){ aClinic = b.getAttribute('data-c'); aDate = null; renderAdmin(); });
+    });
+    await loadTaken();
+    var today = addDays(cairoNow().iso, -3);
+    var dates = Object.keys(takenByDate[aClinic] || {}).filter(function(d){ return d >= today; }).sort();
+    $('pt-a-days').innerHTML = dates.map(function(d){
+      return '<button type="button" class="pt-day' + (d === aDate ? ' on' : '') + '" data-d="' + d + '"><b>' + dayLabel(d) + '</b><span>' + ar(countFor(aClinic, d)) + ' حجز</span></button>';
+    }).join('') || '<p class="pt-small">لا توجد حجوزات قادمة.</p>';
+    $('pt-a-days').querySelectorAll('[data-d]').forEach(function(b){
+      b.addEventListener('click', function(){ aDate = b.getAttribute('data-d'); renderAdmin(); });
+    });
+    renderAdminList();
+  }
+
+  async function renderAdminList(){
+    var box = $('pt-a-list');
+    if (!aDate){ box.innerHTML = ''; return; }
+    box.innerHTML = '<p class="pt-small">جارٍ التحميل…</p>';
+    var data;
+    try { data = (await dbGet('patients/' + aClinic + '/' + aDate)) || {}; }
+    catch(e){ box.innerHTML = '<p class="pt-msg err">تعذر قراءة الحجوزات (تحقق من قواعد قاعدة البيانات).</p>'; return; }
+    var ns = Object.keys(data).sort(function(a,b){ return a - b; });
+    if (!ns.length){ box.innerHTML = '<p class="pt-small">لا توجد حجوزات.</p>'; return; }
+    box.innerHTML = ns.map(function(n){
+      var r = data[n] || {};
+      var wa = 'https://wa.me/' + waNumber(r.phone);
+      return '<div class="pt-row"><div class="pt-num">' + ar(n) + '</div><div class="info"><b>' + esc(r.name) + '</b><br>' + esc(r.phone) + ' · ' + esc(r.type) + '</div>' +
+        '<a class="pt-btn" target="_blank" rel="noopener" href="' + wa + '">واتساب</a>' +
+        '<button type="button" class="pt-btn del" data-del="' + n + '">حذف</button></div>';
+    }).join('');
+    box.querySelectorAll('[data-del]').forEach(function(b){
+      b.addEventListener('click', async function(){
+        var n = b.getAttribute('data-del'), r = data[n] || {};
+        if (!window.confirm('حذف حجز ' + (r.name || '') + '؟')) return;
+        try {
+          await dbDelete('patients/' + aClinic + '/' + aDate + '/' + n);
+          await dbDelete('ptaken/' + aClinic + '/' + aDate + '/' + n).catch(function(){});
+          if (r.phone) await dbDelete('ptaken/' + aClinic + '/' + aDate + '/' + await phoneMarker(r.phone)).catch(function(){});
+          renderAdmin();
+        } catch(e){ window.alert('تعذر الحذف.'); }
+      });
+    });
+  }
+
+  renderClinics();
+  loadTaken().then(renderDays);
+})();
+</script>
+</body>
+</html>
