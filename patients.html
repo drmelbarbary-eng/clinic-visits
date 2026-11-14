@@ -74,6 +74,7 @@
     <div id="pt-form" style="display:none">
       <div class="pt-title">بياناتك</div>
       <div class="pt-field"><label for="pt-name">الاسم</label><input type="text" id="pt-name" autocomplete="name" placeholder="الاسم بالكامل"></div>
+      <div class="pt-field"><label for="pt-age">السن</label><input type="number" id="pt-age" inputmode="numeric" min="0" max="120" placeholder="بالسنوات"></div>
       <div class="pt-field"><label for="pt-phone">رقم الموبايل</label><input type="tel" id="pt-phone" inputmode="tel" autocomplete="tel" placeholder="01xxxxxxxxx"></div>
       <div class="pt-field"><label for="pt-type">نوع الحجز</label>
         <select id="pt-type"><option value="كشف">كشف</option><option value="كشف مع إيكو">كشف مع إيكو</option><option value="إيكو فقط">إيكو فقط</option><option value="إعادة">إعادة</option></select>
@@ -250,9 +251,10 @@
 
   // ---- الحجز: أخذ أول رقم دور متاح ----
   async function book(){
-    var name = $('pt-name').value.trim(), phone = $('pt-phone').value.trim(), type = $('pt-type').value;
+    var name = $('pt-name').value.trim(), phone = $('pt-phone').value.trim(), type = $('pt-type').value, age = parseInt($('pt-age').value, 10);
     if (!dateIso){ showMsg('من فضلك اختر اليوم.'); return; }
     if (name.length < 3){ showMsg('من فضلك اكتب الاسم بالكامل.'); return; }
+    if (!(age >= 0 && age <= 120)){ showMsg('من فضلك اكتب السن بالأرقام.'); return; }
     if (!validPhone(phone)){ showMsg('من فضلك اكتب رقم موبايل صحيحاً (01xxxxxxxxx).'); return; }
     var now = cairoNow(), cfg = CLINICS[clinic].days[dateIso && dateFromIso(dateIso).getUTCDay()];
     if (!cfg || dateIso < now.iso || (dateIso === now.iso && now.min >= cfg.start * 60)){ showMsg('هذا اليوم لم يعد متاحاً للحجز، اختر يوماً آخر.'); return; }
@@ -265,7 +267,7 @@
       for (var n = 1; n <= cap * 2 && got === null; n += 2){  // أرقام فردية فقط للحجز المسبق
         if (day[n]) continue;
         try {
-          await dbSet('patients/' + clinic + '/' + dateIso + '/' + n, {name: name, phone: normalizePhone(phone), type: type, mk: await cancelKey(phone), bookedAt: new Date().toISOString()});
+          await dbSet('patients/' + clinic + '/' + dateIso + '/' + n, {name: name, age: age, phone: normalizePhone(phone), type: type, mk: await cancelKey(phone), bookedAt: new Date().toISOString()});
           got = n;
         } catch(e){
           fails++;
@@ -287,7 +289,7 @@
         '<p class="pt-small" style="color:#8a1f1f;font-weight:700">في حالة عدم التواجد داخل العيادة أثناء دورك، يُعدّ الحجز لاغياً تماماً.<br>الأرقام الزوجية مخصصة للحالات التي تحضر مباشرة.</p><p class="pt-small">برجاء الحضور في مواعيد العيادة، ويمكنك الاحتفاظ بصورة من هذه الشاشة.<br>لو تغيّرت ظروفك، يمكنك إلغاء الحجز بسهولة من أسفل الصفحة.<br>للاستفسار: ' + CLINICS[clinic].phone + '</p>';
       t.style.display = 'block';
       t.scrollIntoView({behavior:'smooth', block:'center'});
-      $('pt-name').value = ''; $('pt-phone').value = '';
+      $('pt-name').value = ''; $('pt-age').value = ''; $('pt-phone').value = '';
       dateIso = null;
     } catch(e){
       showMsg('تعذر الاتصال بالخادم، برجاء المحاولة مرة أخرى.');
@@ -357,7 +359,7 @@
     box.innerHTML = bulk + ns.map(function(n){
       var r = data[n] || {};
       var wa = 'https://wa.me/' + waNumber(r.phone) + '?text=' + remindText(n, r);
-      return '<div class="pt-row"><div class="pt-num">' + ar(n) + '</div><div class="info"><b>' + esc(r.name) + '</b><br>' + esc(r.phone) + ' · ' + esc(r.type) + '</div>' +
+      return '<div class="pt-row"><div class="pt-num">' + ar(n) + '</div><div class="info"><b>' + esc(r.name) + '</b>' + (r.age !== undefined ? ' · ' + ar(r.age) + ' سنة' : '') + '<br>' + esc(r.phone) + ' · ' + esc(r.type) + '</div>' +
         '<a class="pt-btn" target="_blank" rel="noopener" href="' + wa + '">تذكير</a>' +
         '<button type="button" class="pt-btn del" data-del="' + n + '">حذف</button></div>';
     }).join('');
